@@ -1,0 +1,51 @@
+{
+  "name": "@reqbin/connector",
+  "version": "0.1.0",
+  "description": "ReqBin Connector (local agent): bridge browser HTTP(S) requests to resources in local network.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "reqbin-agent": "./bin/reqbin-agent.js"
+  },
+  "files": [
+    "src",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "reqbin",
+    "connector",
+    "agent",
+    "proxy",
+    "local",
+    "bridge",
+    "relay",
+    "tunnel"
+  ],
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "start": "node bin/reqbin-agent.js",
+    "test": "node -e \"console.log('ok')\"",
+    "prepublishOnly": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ReqBin/connector-node.git"
+  },
+  "author": "ReqBin <dev@reqbin.com> (https://github.com/ReqBin)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ReqBin/connector-node/issues"
+  },
+  "homepage": "https://github.com/ReqBin/connector-node#readme"
+}
