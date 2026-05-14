@@ -184,12 +184,35 @@ Host/IP policy:
 
 Pairing model:
 
-- future-ready pairing should generate a short-lived code;
-- the client exchanges the code for a bearer token;
-- tokens are stored locally by the connector;
-- users can revoke/reset pairing;
+- pairing should use a short-lived six-digit code shown out-of-band by the
+  local agent, for example in terminal startup output;
+- the browser UI asks the user to enter that code and exchanges it for a bearer
+  token;
+- the connector must not expose an unauthenticated endpoint that returns the
+  current pairing code, because that would let any allowed origin pair without
+  user participation;
+- pairing codes should expire quickly, for example after five minutes;
+- pairing attempts should be rate-limited;
+- tokens are stored locally by the connector as hashes where practical, not as
+  raw bearer values;
+- users can revoke/reset pairing from the CLI and, later, from an authenticated
+  local management endpoint;
 - `--no-auth` can exist only as an explicit development flag and must be visible
   in logs/startup output.
+
+Suggested pairing endpoints:
+
+- `POST /v1/pair`: accepts a user-entered code and returns a bearer token when
+  the code is valid, unexpired, and attempt limits are not exceeded;
+- `POST /v1/pair/reset`: authenticated or CLI-backed reset, not part of the
+  first implementation unless explicitly planned.
+
+Open questions for implementation:
+
+- exact token persistence location and file permissions;
+- whether pairing is required for `GET /version`;
+- whether the client stores the bearer token in localStorage or a more isolated
+  browser storage path.
 
 ## CLI And Configuration
 
@@ -303,7 +326,17 @@ Use `@webquarx/design-patterns` intentionally:
 - `Command` for cohesive operations with constructor-injected dependencies;
 - `ChainOfResponsibility` for the `/v1/fetch` pipeline where each step has one
   reason to change;
-- avoid `Invoker` unless concurrent command execution is actually needed;
+- `Invoker` may be used when its command execution model fits, including its
+  task-level `timeout`, `retries`, and concurrency limits;
+- do not force `Invoker` into the target HTTP request path if it makes
+  cancellation, streaming, or error mapping less explicit;
+- target fetch timeout still needs `AbortController` or an equivalent transport
+  cancellation mechanism even if `Invoker.limit({ timeout })` is used, because
+  the underlying network operation must be aborted;
+- response and request byte limits are transport/body-reading concerns, not
+  `Invoker` concerns;
+- retries must be opt-in and method-aware. Do not retry unsafe methods such as
+  `POST`, `PUT`, `PATCH`, or `DELETE` by default;
 - one top-level command/service class per file;
 - avoid broad "manager" classes.
 
@@ -315,8 +348,37 @@ Suggested `/v1/fetch` chain:
 4. sanitize/normalize outbound headers;
 5. build outbound fetch options;
 6. execute target request with timeout and byte limits;
-7. map target response to ReqBin sender response;
-8. map known connector failures to stable error response.
+7. follow redirects manually and record redirect hop metadata;
+8. map target response to ReqBin sender response;
+9. map known connector failures to stable error response.
+
+Redirect handling:
+
+- use manual redirect handling instead of relying on `fetch` with automatic
+  redirect following when redirect metadata is required;
+- send target requests with manual redirect behavior;
+- for each `3xx` response with `Location`, record status code, headers,
+  resolved redirect URL, and elapsed milliseconds for that hop;
+- resolve relative `Location` values against the current URL;
+- enforce a configurable maximum redirect count;
+- preserve method/body semantics according to HTTP redirect behavior before
+  implementation; this needs a focused test plan for 301, 302, 303, 307, and
+  308;
+- map final response and redirect chain into `Redirects`, `RedirectsCount`,
+  `RedirectsTime`, and `RedirectUrl`.
+
+Timing model:
+
+- `Elapsed` should represent total elapsed milliseconds for the full request,
+  including redirects;
+- each redirect entry should include its own elapsed milliseconds;
+- `RedirectsTime` should be the sum of redirect hop elapsed values;
+- `Timings.Total` should be reported in seconds for compatibility with the
+  existing client parser;
+- DNS, TCP connect, TLS, sending, waiting, and receiving timings cannot be
+  measured accurately through standard Node `fetch` alone. Until a lower-level
+  transport or diagnostics API is introduced, those fields should be `0` and
+  documented as unavailable rather than guessed.
 
 ## OpenAPI Documentation
 
@@ -462,25 +524,33 @@ Validation:
 - route tests for header behavior;
 - `test:coverage`.
 
-### Story 5: Add Token Auth And Pairing Skeleton
+### Story 5: Add Token Auth And Pairing Flow
 
 As a corporate user, I want the connector to require an explicit paired client
 token so a random browser page cannot submit requests through the local agent.
 
 Acceptance criteria:
 
+- connector generates a short-lived six-digit pairing code;
+- pairing code is shown out-of-band by the local agent, not fetched
+  automatically by the browser UI;
+- `POST /v1/pair` exchanges a valid pairing code for a bearer token;
+- invalid, expired, and over-attempt pairing codes fail safely;
 - `/v1/fetch` requires `Authorization: Bearer <token>` by default;
 - invalid/missing tokens fail before target network access;
 - `--no-auth` disables auth only when explicitly configured;
 - startup logs clearly indicate auth-disabled mode;
 - token validation is isolated behind an interface for future persistent pairing;
+- token storage stores token hashes where practical;
 - no token values are logged;
-- tests cover valid token, invalid token, missing token, and no-auth mode.
+- tests cover valid pairing, invalid code, expired code, attempt limit, valid
+  token, invalid token, missing token, and no-auth mode.
 
 Validation:
 
 - auth policy unit tests;
-- `/v1/fetch` auth route tests;
+- pairing route tests;
+- `/v1/fetch` auth route tests proving failed auth does not call target fetch;
 - `test:coverage`.
 
 ### Story 6: Implement Stable `/v1/fetch` Request Parsing
@@ -537,10 +607,15 @@ still enforcing timeout and size limits.
 Acceptance criteria:
 
 - target fetch uses configured timeout;
+- transport timeout aborts the underlying network operation;
+- `Invoker.limit({ timeout })` may wrap command execution only if it does not
+  replace explicit transport cancellation;
 - request body limit is enforced before target fetch;
 - response body limit is enforced while reading the response;
 - timeout maps to a stable connector error response;
 - DNS/network/fetch failures map to stable connector error response;
+- retries are disabled by default and must not happen for unsafe methods unless
+  a later story explicitly enables method-aware retry policy;
 - tests cover success, timeout, network failure, oversized request body, and
   oversized response body.
 
@@ -550,7 +625,32 @@ Validation:
 - route tests for mapped errors;
 - `test:coverage`.
 
-### Story 9: Map Target Response To ReqBin Sender Response
+### Story 9: Follow Redirects And Record Timings
+
+As the ReqBin client, I want redirect chains represented explicitly so response
+history can show where the local request went and how long redirects took.
+
+Acceptance criteria:
+
+- target fetch follows redirects manually up to a configured maximum;
+- redirect entries include status code, redirect URL, headers, and per-hop
+  elapsed milliseconds;
+- relative `Location` headers are resolved against the current URL;
+- redirect method/body behavior is covered for 301, 302, 303, 307, and 308;
+- redirect loops and max-redirect overflow map to stable connector errors;
+- `Redirects`, `RedirectsCount`, `RedirectsTime`, and `RedirectUrl` are
+  populated consistently;
+- `Elapsed` includes the whole redirect chain;
+- `Timings.Total` is populated in seconds;
+- unsupported detailed timing fields are returned as `0` and documented.
+
+Validation:
+
+- redirect service tests;
+- `/v1/fetch` integration tests with mocked redirect responses;
+- `test:coverage`.
+
+### Story 10: Map Target Response To ReqBin Sender Response
 
 As the ReqBin client, I want connector responses to parse through the existing
 response pipeline so history, body display, headers, and status behavior remain
@@ -576,7 +676,7 @@ Validation:
 - optional compatibility test using a client-like parser fixture;
 - `test:coverage`.
 
-### Story 10: Generate And Publish OpenAPI
+### Story 11: Generate And Publish OpenAPI
 
 As maintainers and client developers, we want a generated OpenAPI document so
 the connector contract can be published and reviewed.
@@ -596,7 +696,7 @@ Validation:
 - `build`;
 - `test:coverage`.
 
-### Story 11: Harden CLI Startup
+### Story 12: Harden CLI Startup
 
 As a user, I want a predictable CLI with safe defaults and clear errors so I can
 run the connector locally without accidentally exposing it.
@@ -619,7 +719,7 @@ Validation:
 - manual smoke command after implementation;
 - `test:coverage`.
 
-### Story 12: Update README And Operational Docs
+### Story 13: Update README And Operational Docs
 
 As a corporate developer or admin, I want clear docs for installing, running,
 pairing, configuring CORS/auth, and troubleshooting the connector.
@@ -644,6 +744,26 @@ Validation:
 ## Environment Preparation Plan
 
 Before implementing stories, prepare the repository in small commit-sized steps.
+Do not implement the full server and split commits after the fact. Each step
+needs an approved intent, focused tests where practical, implementation,
+targeted validation, self-review, and one small semantic commit before moving
+to the next step.
+
+Commit discipline:
+
+- start each implementation step with a one-sentence intent;
+- identify expected files and validation before editing;
+- prefer tests first when behavior is clear;
+- do not mix dependency setup, refactors, endpoint behavior, security policy,
+  docs, and OpenAPI output in one commit unless inseparable;
+- if implementation would duplicate non-trivial logic, stop and inspect whether
+  a refactor-first step is needed;
+- refactor-first steps must preserve behavior and have their own tests and
+  commit;
+- after each commit, review that commit's diff for correctness, security,
+  missing tests, and documentation impact;
+- do not proceed to the next story while Blocking, High, or Medium review
+  findings remain unresolved or explicitly deferred.
 
 ### Step 1: Decide Package Manager And Dependency Policy
 
