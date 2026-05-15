@@ -228,4 +228,30 @@ describe('fetch route chain steps', () => {
     })
     expect(JSON.stringify(logger.mock.calls)).not.toContain('secret')
   })
+
+  it('logs stripped forwarded headers as warning without header values', async () => {
+    const execute = vi.fn()
+    const logger = vi.fn()
+    const context = createBaseContext()
+    context.route.logger = logger
+    context.parsed = {
+      ok: true,
+      request: {
+        headersText: 'Host: secret.example\nContent-Length: 123\nAccept: application/json',
+        method: 'GET',
+        url: new URL('https://api.example.test'),
+      },
+    }
+
+    await sanitizeFetchHeadersStep(execute, context)
+
+    expect(logger).toHaveBeenCalledWith({
+      correlationId: 'test-correlation-id',
+      event: 'reqbin.connector.forwarded_headers.stripped',
+      headers: ['content-length', 'host'],
+      level: 'warning',
+    })
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('secret.example')
+    expect(execute).toHaveBeenCalledWith(context)
+  })
 })

@@ -6,6 +6,7 @@ import { ParseFetchPayloadCommand } from '../../fetch/commands/ParseFetchPayload
 import type { ConnectorSenderResponse, FetchPayloadSuccess } from '../../fetch/types.js'
 import {
   logFetchValidationFailed,
+  logStrippedForwardedHeaders,
   logTargetFailed,
   logTargetFinished,
   logTargetStarted,
@@ -114,6 +115,14 @@ export async function sanitizeFetchHeadersStep(
   }
 
   context.headers = headerPolicy
+  if (headerPolicy.strippedHeaders.length > 0) {
+    logStrippedForwardedHeaders(
+      context.route.logger ?? writeRequestLog,
+      context.request.id,
+      headerPolicy.strippedHeaders,
+    )
+  }
+
   return execute(context)
 }
 
