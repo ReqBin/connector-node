@@ -2,6 +2,7 @@ import type { ConnectorTimings, TargetFetchTimings } from './types.js'
 
 export interface TargetTimingSnapshot {
   bodyEndedAt?: number
+  phases?: Partial<TargetFetchTimings>
   responseReceivedAt: number
   startedAt: number
   totalStartedAt?: number
@@ -9,6 +10,7 @@ export interface TargetTimingSnapshot {
 
 export function createTargetTimings({
   bodyEndedAt,
+  phases = {},
   responseReceivedAt,
   startedAt,
   totalStartedAt = startedAt,
@@ -16,13 +18,13 @@ export function createTargetTimings({
   const endedAt = bodyEndedAt ?? responseReceivedAt
 
   return {
-    connectingMs: 0,
-    dnsMs: 0,
+    connectingMs: phases.connectingMs ?? 0,
+    dnsMs: phases.dnsMs ?? 0,
     receivingMs: endedAt - responseReceivedAt,
-    sendingMs: 0,
-    tlsMs: 0,
+    sendingMs: phases.sendingMs ?? 0,
+    tlsMs: phases.tlsMs ?? 0,
     totalMs: endedAt - totalStartedAt,
-    waitingMs: responseReceivedAt - startedAt,
+    waitingMs: phases.waitingMs ?? responseReceivedAt - startedAt,
   }
 }
 
