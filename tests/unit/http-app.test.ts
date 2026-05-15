@@ -31,8 +31,24 @@ describe('Fastify app factory', () => {
     })
 
     expect(response.statusCode).toBe(200)
+    expect(response.headers['correlation-id']).toEqual(expect.any(String))
     expect(response.headers['content-type']).toContain('application/json')
     expect(response.json()).toEqual({ status: 'up' })
+  })
+
+  it('propagates provided correlation ids', async () => {
+    const testApp = await createTestApp()
+
+    const response = await testApp.inject({
+      headers: {
+        'correlation-id': 'reqbin-test-correlation',
+      },
+      method: 'GET',
+      url: '/health',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['correlation-id']).toBe('reqbin-test-correlation')
   })
 
   it('returns default connector version metadata', async () => {
@@ -44,6 +60,7 @@ describe('Fastify app factory', () => {
     })
 
     expect(response.statusCode).toBe(200)
+    expect(response.headers['correlation-id']).toEqual(expect.any(String))
     expect(response.json()).toEqual({
       name: packageJson.name,
       protocolVersion: 'v1',

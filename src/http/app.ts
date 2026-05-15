@@ -2,6 +2,7 @@ import swagger from '@fastify/swagger'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { createDefaultConnectorInfo, type ConnectorInfo } from './connector-info.js'
 import { registerRoutes } from './routes.js'
+import { CORRELATION_ID_HEADER, createCorrelationId, registerCorrelationIdHook } from '../observability/correlation-id.js'
 
 export interface CreateAppOptions {
   connectorInfo?: ConnectorInfo
@@ -9,7 +10,10 @@ export interface CreateAppOptions {
 
 export async function createApp({ connectorInfo = createDefaultConnectorInfo() }: CreateAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
+    genReqId: createCorrelationId,
     logger: false,
+    requestIdHeader: CORRELATION_ID_HEADER,
+    requestIdLogLabel: 'correlationId',
   })
 
   await app.register(swagger, {
@@ -26,6 +30,7 @@ export async function createApp({ connectorInfo = createDefaultConnectorInfo() }
     app,
     connectorInfo,
   })
+  registerCorrelationIdHook(app)
 
   return app
 }
