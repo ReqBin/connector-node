@@ -9,6 +9,7 @@ import { getRedirectLocation, isRedirectStatus, shouldConvertRedirectToGet, stri
 import { collectHeaders, readResponseBody } from '../target-response.js'
 import { createTargetFetchFailure, isTargetFetchFailure } from '../target-fetch-failure.js'
 import { createTargetTimings } from '../target-timings.js'
+import { getNodeResponseTimings, nodeTargetFetch } from '../node-target-fetch.js'
 import {
   DEFAULT_MAX_REDIRECTS,
   DEFAULT_REQUEST_BODY_LIMIT_BYTES,
@@ -37,7 +38,7 @@ export class ExecuteTargetFetchCommand extends Command {
   private readonly timeoutMs: number
 
   constructor({
-    fetchImpl = fetch,
+    fetchImpl = nodeTargetFetch,
     maxRedirects = DEFAULT_MAX_REDIRECTS,
     now = Date.now,
     requestBodyLimitBytes = DEFAULT_REQUEST_BODY_LIMIT_BYTES,
@@ -78,6 +79,7 @@ export class ExecuteTargetFetchCommand extends Command {
           signal: controller.signal,
         })
         const responseReceivedAt = this.now()
+        const phases = getNodeResponseTimings(response)
 
         const redirectLocation = getRedirectLocation(response)
         if (isRedirectStatus(response.status) && redirectLocation !== undefined) {
@@ -98,6 +100,7 @@ export class ExecuteTargetFetchCommand extends Command {
             headers: collectHeaders(response),
             status: response.status,
             timings: createTargetTimings({
+              phases,
               responseReceivedAt,
               startedAt: hopStartedAt,
             }),
@@ -136,6 +139,7 @@ export class ExecuteTargetFetchCommand extends Command {
             statusText: response.statusText,
             timings: createTargetTimings({
               bodyEndedAt,
+              phases,
               responseReceivedAt,
               startedAt: hopStartedAt,
               totalStartedAt: startedAt,
