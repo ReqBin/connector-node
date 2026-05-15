@@ -28,7 +28,13 @@ export interface FetchFailureLogEntry extends BaseLogEntry {
   stage: 'auth' | 'headers' | 'payload' | 'target-policy'
 }
 
-export type ConnectorLogEntry = FetchFailureLogEntry | RequestLogEntry | TargetLogEntry
+export interface StrippedHeadersLogEntry extends BaseLogEntry {
+  event: 'reqbin.connector.forwarded_headers.stripped'
+  headers: string[]
+  level: 'warning'
+}
+
+export type ConnectorLogEntry = FetchFailureLogEntry | RequestLogEntry | StrippedHeadersLogEntry | TargetLogEntry
 export type ConnectorLogger = (entry: ConnectorLogEntry) => void
 
 declare module 'fastify' {
@@ -116,6 +122,19 @@ export function logFetchValidationFailed(
     event: 'reqbin.connector.fetch.validation_failed',
     reason,
     stage,
+  })
+}
+
+export function logStrippedForwardedHeaders(
+  logger: ConnectorLogger,
+  correlationId: string,
+  strippedHeaders: string[],
+): void {
+  logger({
+    correlationId,
+    event: 'reqbin.connector.forwarded_headers.stripped',
+    headers: strippedHeaders.map(header => header.toLowerCase()).sort(),
+    level: 'warning',
   })
 }
 
