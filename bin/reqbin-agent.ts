@@ -1,28 +1,29 @@
 #!/usr/bin/env node
+import { parseAgentCliOptions } from '../src/cli/agent-options.js'
 import { startServer } from '../src/index.js'
 
-function getPortFromArgs(argv: string[]): number {
-  const idxP = argv.indexOf('-p')
-  const idxPort = argv.findIndex(a => a === '--port' || a.startsWith('--port='))
-  if (idxP >= 0 && argv[idxP + 1]) return Number(argv[idxP + 1])
-  if (idxPort >= 0) {
-    const val = argv[idxPort]!.includes('=') ? argv[idxPort]!.split('=')[1] : argv[idxPort + 1]
-    if (val) return Number(val)
-  }
-  const direct = argv.find(a => /^\d{2,5}$/.test(a))
-  if (direct) return Number(direct)
-  return Number(process.env.PORT || 7070)
-}
+try {
+  const options = parseAgentCliOptions(process.argv.slice(2))
 
-const port = getPortFromArgs(process.argv.slice(2))
-
-startServer({ port })
-  .then((server) => {
-    process.on('SIGINT', () => {
-      server.close(() => process.exit(0))
+  startServer({
+    auth: {
+      authDisabled: options.authDisabled,
+    },
+    cors: {
+      allowedOrigins: options.allowedOrigins,
+    },
+    port: options.port,
+  })
+    .then((server) => {
+      process.on('SIGINT', () => {
+        server.close(() => process.exit(0))
+      })
     })
-  })
-  .catch((err: unknown) => {
-    console.error('[reqbin-agent] failed to start:', err)
-    process.exit(1)
-  })
+    .catch((err: unknown) => {
+      console.error('[reqbin-agent] failed to start:', err)
+      process.exit(1)
+    })
+} catch (err) {
+  console.error('[reqbin-agent] invalid options:', err instanceof Error ? err.message : String(err))
+  process.exit(1)
+}
