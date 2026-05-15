@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { startServer } from '../../src/index.js'
 import { listenFastifyApp, resolveServerPort } from '../../src/server.js'
+import { MemoryPairingStore } from '../../src/security/pairing.js'
 
 let app: FastifyInstance | undefined
 
@@ -56,6 +57,11 @@ describe('server startup', () => {
 
     app = await startServer({
       listen,
+      pairingStore: new MemoryPairingStore({
+        codeGenerator: () => '123456',
+        now: () => 1000,
+        ttlMs: 300000,
+      }),
       port: 8181,
     })
 
@@ -65,8 +71,33 @@ describe('server startup', () => {
       event: 'reqbin.connector.started',
       fetchUrl: 'http://localhost:9091/v1/fetch',
       healthUrl: 'http://localhost:9091/health',
+      authDisabled: false,
+      pairingCode: '123456',
+      pairingExpiresAt: '1970-01-01T00:05:01.000Z',
       versionUrl: 'http://localhost:9091/version',
     })
+  })
+
+  it('omits pairing codes from startup metadata when auth is disabled', async () => {
+    const listen = vi.fn().mockResolvedValue(undefined)
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+    app = await startServer({
+      auth: {
+        authDisabled: true,
+      },
+      listen,
+      port: 8181,
+    })
+
+    const payload = getLoggedStartupPayload(log)
+
+    expect(payload).toMatchObject({
+      authDisabled: true,
+      event: 'reqbin.connector.started',
+    })
+    expect(payload.pairingCode).toBeUndefined()
+    expect(payload.pairingExpiresAt).toBeUndefined()
   })
 
   it('resolves explicit ports before environment ports', () => {
