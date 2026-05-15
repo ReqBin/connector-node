@@ -55,7 +55,18 @@ export interface TargetFetchRedirect {
   elapsedMs: number
   headers: Record<string, string>
   status: number
+  timings: TargetFetchTimings
   url: string
+}
+
+export interface TargetFetchTimings {
+  connectingMs: number
+  dnsMs: number
+  receivingMs: number
+  sendingMs: number
+  tlsMs: number
+  totalMs: number
+  waitingMs: number
 }
 
 export interface TargetFetchResponse {
@@ -67,6 +78,7 @@ export interface TargetFetchResponse {
   redirectsTimeMs?: number
   status: number
   statusText: string
+  timings: TargetFetchTimings
 }
 
 export interface TargetFetchSuccess {
@@ -87,6 +99,7 @@ export interface ConnectorRedirect {
   headers?: string
   redirect_url: string
   status_code: string
+  timings?: ConnectorTimings
 }
 
 export interface ConnectorTimings {

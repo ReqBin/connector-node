@@ -7,6 +7,7 @@ import type {
 import { getRedirectLocation, isRedirectStatus, shouldConvertRedirectToGet, stripBodyHeaders } from '../redirect-policy.js'
 import { collectHeaders, readResponseBody } from '../target-response.js'
 import { createTargetFetchFailure, isTargetFetchFailure } from '../target-fetch-failure.js'
+import { createTargetTimings } from '../target-timings.js'
 import { validateTargetUrlPolicy } from '../../security/target-policy.js'
 
 export const DEFAULT_TARGET_REQUEST_TIMEOUT_MS = 300_000
@@ -98,6 +99,10 @@ export class ExecuteTargetFetchCommand extends Command {
             elapsedMs: responseReceivedAt - hopStartedAt,
             headers: collectHeaders(response),
             status: response.status,
+            timings: createTargetTimings({
+              responseReceivedAt,
+              startedAt: hopStartedAt,
+            }),
             url: nextUrl.href,
           })
 
@@ -113,6 +118,7 @@ export class ExecuteTargetFetchCommand extends Command {
         }
 
         const responseBody = await readResponseBody(response, this.responseBodyLimitBytes)
+        const bodyEndedAt = this.now()
         if (isTargetFetchFailure(responseBody)) {
           clearTimeout(timeout)
           return responseBody
@@ -124,12 +130,18 @@ export class ExecuteTargetFetchCommand extends Command {
           response: {
             body: responseBody,
             contentType: response.headers.get('content-type') || '',
-            elapsedMs: this.now() - startedAt,
+            elapsedMs: bodyEndedAt - startedAt,
             headers: collectHeaders(response),
             redirects,
             redirectsTimeMs,
             status: response.status,
             statusText: response.statusText,
+            timings: createTargetTimings({
+              bodyEndedAt,
+              responseReceivedAt,
+              startedAt: hopStartedAt,
+              totalStartedAt: startedAt,
+            }),
           },
         }
         clearTimeout(timeout)

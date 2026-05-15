@@ -3,25 +3,13 @@ import { STATUS_CODES } from 'node:http'
 import type {
   ConnectorRedirect,
   ConnectorSenderResponse,
-  ConnectorTimings,
   TargetFetchRedirect,
   TargetFetchResult,
 } from '../types.js'
+import { emptyTargetTimings, mapTargetTimingsToConnector } from '../target-timings.js'
 
 const HTTP_VERSION = '1.1'
 const ERROR_CONTENT_TYPE = 'text/plain; charset=utf-8'
-
-function emptyTimings(totalMs = 0): ConnectorTimings {
-  return {
-    Connecting: 0,
-    DNS: 0,
-    Receiving: 0,
-    Sending: 0,
-    TLS: 0,
-    Total: totalMs / 1000,
-    Waiting: 0,
-  }
-}
 
 function mapHeaders(headers: Record<string, string>): string {
   return Object.entries(headers)
@@ -35,6 +23,7 @@ function mapRedirect(redirect: TargetFetchRedirect): ConnectorRedirect {
     headers: mapHeaders(redirect.headers),
     redirect_url: redirect.url,
     status_code: String(redirect.status),
+    timings: mapTargetTimingsToConnector(redirect.timings),
   }
 }
 
@@ -82,7 +71,7 @@ function createBaseResponse(overrides: Partial<ConnectorSenderResponse>): Connec
     StatusCode: 0,
     StatusDescription: '',
     Success: false,
-    Timings: emptyTimings(),
+    Timings: mapTargetTimingsToConnector(emptyTargetTimings()),
     Version: HTTP_VERSION,
     ...overrides,
   }
@@ -116,7 +105,7 @@ export class MapTargetFetchResultCommand extends Command {
       StatusCode: response.status,
       StatusDescription: getStatusDescription(response.status, response.statusText),
       Success: true,
-      Timings: emptyTimings(response.elapsedMs),
+      Timings: mapTargetTimingsToConnector(response.timings),
     })
   }
 }

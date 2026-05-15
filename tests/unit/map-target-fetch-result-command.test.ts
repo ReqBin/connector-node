@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MapTargetFetchResultCommand } from '../../src/fetch/commands/MapTargetFetchResultCommand.js'
+import { emptyTargetTimings } from '../../src/fetch/target-timings.js'
 import type { TargetFetchResult } from '../../src/fetch/types.js'
 
 const command = new MapTargetFetchResultCommand()
@@ -22,6 +23,15 @@ describe('MapTargetFetchResultCommand', () => {
         },
         status: 202,
         statusText: 'Accepted',
+        timings: {
+          connectingMs: 3,
+          dnsMs: 2,
+          receivingMs: 12,
+          sendingMs: 4,
+          tlsMs: 5,
+          totalMs: 42,
+          waitingMs: 19,
+        },
       },
     }
 
@@ -40,13 +50,13 @@ describe('MapTargetFetchResultCommand', () => {
       StatusDescription: 'Accepted',
       Success: true,
       Timings: {
-        Connecting: 0,
-        DNS: 0,
-        Receiving: 0,
-        Sending: 0,
-        TLS: 0,
+        Connecting: 0.003,
+        DNS: 0.002,
+        Receiving: 0.012,
+        Sending: 0.004,
+        TLS: 0.005,
         Total: 0.042,
-        Waiting: 0,
+        Waiting: 0.019,
       },
       Version: '1.1',
     })
@@ -67,6 +77,15 @@ describe('MapTargetFetchResultCommand', () => {
               location: '/next',
             },
             status: 302,
+            timings: {
+              connectingMs: 0,
+              dnsMs: 0,
+              receivingMs: 1,
+              sendingMs: 0,
+              tlsMs: 0,
+              totalMs: 25,
+              waitingMs: 24,
+            },
             url: 'https://api.example.test/next',
           },
           {
@@ -75,12 +94,22 @@ describe('MapTargetFetchResultCommand', () => {
               location: 'https://api.example.test/final',
             },
             status: 307,
+            timings: {
+              connectingMs: 0,
+              dnsMs: 0,
+              receivingMs: 2,
+              sendingMs: 0,
+              tlsMs: 0,
+              totalMs: 30,
+              waitingMs: 28,
+            },
             url: 'https://api.example.test/final',
           },
         ],
         redirectsTimeMs: 55,
         status: 200,
         statusText: 'OK',
+        timings: emptyTargetTimings(),
       },
     }
 
@@ -92,12 +121,30 @@ describe('MapTargetFetchResultCommand', () => {
           headers: 'location: /next\r\n',
           redirect_url: 'https://api.example.test/next',
           status_code: '302',
+          timings: {
+            Connecting: 0,
+            DNS: 0,
+            Receiving: 0.001,
+            Sending: 0,
+            TLS: 0,
+            Total: 0.025,
+            Waiting: 0.024,
+          },
         },
         {
           elapsed: 30,
           headers: 'location: https://api.example.test/final\r\n',
           redirect_url: 'https://api.example.test/final',
           status_code: '307',
+          timings: {
+            Connecting: 0,
+            DNS: 0,
+            Receiving: 0.002,
+            Sending: 0,
+            TLS: 0,
+            Total: 0.03,
+            Waiting: 0.028,
+          },
         },
       ],
       RedirectsCount: 2,
@@ -115,6 +162,7 @@ describe('MapTargetFetchResultCommand', () => {
         headers: {},
         status: 200,
         statusText: 'OK',
+        timings: emptyTargetTimings(),
       },
     }
 
@@ -140,6 +188,7 @@ describe('MapTargetFetchResultCommand', () => {
         headers: {},
         status: 404,
         statusText: '',
+        timings: emptyTargetTimings(),
       },
     }
 
@@ -164,6 +213,7 @@ describe('MapTargetFetchResultCommand', () => {
         headers: {},
         status: 599,
         statusText: '',
+        timings: emptyTargetTimings(),
       },
     }
 

@@ -75,6 +75,15 @@ describe('ExecuteTargetFetchCommand', () => {
         redirectsTimeMs: 0,
         status: 202,
         statusText: 'Accepted',
+        timings: {
+          connectingMs: 0,
+          dnsMs: 0,
+          receivingMs: 22,
+          sendingMs: 0,
+          tlsMs: 0,
+          totalMs: 42,
+          waitingMs: 20,
+        },
       },
     })
     expect(result.ok && decode(result.response.body)).toBe('accepted')
@@ -141,9 +150,27 @@ describe('ExecuteTargetFetchCommand', () => {
             'x-hop': 'first',
           },
           status: 302,
+          timings: {
+            connectingMs: 0,
+            dnsMs: 0,
+            receivingMs: 0,
+            sendingMs: 0,
+            tlsMs: 0,
+            totalMs: 25,
+            waitingMs: 25,
+          },
           url: 'https://api.example.test/next',
         }],
         redirectsTimeMs: 25,
+        timings: {
+          connectingMs: 0,
+          dnsMs: 0,
+          receivingMs: 20,
+          sendingMs: 0,
+          tlsMs: 0,
+          totalMs: 100,
+          waitingMs: 50,
+        },
       },
     })
   })
