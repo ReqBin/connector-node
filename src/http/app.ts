@@ -3,8 +3,10 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { createDefaultConnectorInfo, type ConnectorInfo } from './connector-info.js'
 import { registerCors, type CorsOptions } from './cors.js'
 import { registerRoutes } from './routes.js'
+import { DEFAULT_CONNECTOR_INBOUND_BODY_LIMIT_BYTES } from '../config/limits.js'
 import type { FetchLike } from '../fetch/commands/ExecuteTargetFetchCommand.js'
 import { CORRELATION_ID_HEADER, createCorrelationId, registerCorrelationIdHook } from '../observability/correlation-id.js'
+import { registerRequestLoggingHooks, type ConnectorRequestLogger } from '../observability/request-logger.js'
 import { MemoryPairingStore, type PairingStore } from '../security/pairing.js'
 import type { TokenAuthOptions } from '../security/token-auth.js'
 
@@ -13,6 +15,7 @@ export interface CreateAppOptions {
   connectorInfo?: ConnectorInfo
   cors?: CorsOptions
   pairingStore?: PairingStore
+  requestLogger?: ConnectorRequestLogger
   targetFetch?: FetchLike
 }
 
@@ -21,14 +24,18 @@ export async function createApp({
   connectorInfo = createDefaultConnectorInfo(),
   cors,
   pairingStore = new MemoryPairingStore(),
+  requestLogger,
   targetFetch,
 }: CreateAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
+    bodyLimit: DEFAULT_CONNECTOR_INBOUND_BODY_LIMIT_BYTES,
     genReqId: createCorrelationId,
     logger: false,
     requestIdHeader: CORRELATION_ID_HEADER,
     requestIdLogLabel: 'correlationId',
   })
+  registerCorrelationIdHook(app)
+  registerRequestLoggingHooks(app, requestLogger)
 
   await registerCors(app, cors)
 
@@ -49,7 +56,6 @@ export async function createApp({
     pairingStore,
     targetFetch,
   })
-  registerCorrelationIdHook(app)
 
   return app
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FastifyInstance } from 'fastify'
 import { readFileSync } from 'node:fs'
 import { createApp } from '../../src/http/app.js'
@@ -11,6 +11,7 @@ const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import
 }
 
 let app: FastifyInstance | undefined
+let consoleLog: ReturnType<typeof vi.spyOn>
 
 async function createTestApp() {
   app = await createApp()
@@ -18,9 +19,14 @@ async function createTestApp() {
 }
 
 describe('Fastify app factory', () => {
+  beforeEach(() => {
+    consoleLog = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+  })
+
   afterEach(async () => {
     await app?.close()
     app = undefined
+    consoleLog.mockRestore()
   })
 
   it('creates a Fastify app with the health route', async () => {
@@ -50,6 +56,37 @@ describe('Fastify app factory', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.headers['correlation-id']).toBe('reqbin-test-correlation')
+  })
+
+  it('writes structured request logs with correlation ids', async () => {
+    const testApp = await createTestApp()
+
+    await testApp.inject({
+      headers: {
+        'correlation-id': 'reqbin-test-correlation',
+      },
+      method: 'GET',
+      url: '/health',
+    })
+
+    const entries = consoleLog.mock.calls.map(([entry]) => JSON.parse(String(entry)))
+
+    expect(entries).toEqual([
+      {
+        correlationId: 'reqbin-test-correlation',
+        event: 'reqbin.connector.request.started',
+        method: 'GET',
+        url: '/health',
+      },
+      {
+        correlationId: 'reqbin-test-correlation',
+        elapsedMs: expect.any(Number),
+        event: 'reqbin.connector.request.finished',
+        method: 'GET',
+        statusCode: 200,
+        url: '/health',
+      },
+    ])
   })
 
   it('allows CORS requests from default ReqBin origins', async () => {
@@ -418,6 +455,35 @@ describe('Fastify app factory', () => {
       StatusCode: 200,
       Success: true,
     })
+  })
+
+  it('accepts connector request envelopes above the Fastify default body limit', async () => {
+    const content = 'a'.repeat(1024 * 1024 + 1)
+    const targetFetch = vi.fn().mockResolvedValue(new Response(null))
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+      targetFetch,
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          content,
+          contentType: 'CUSTOM',
+          method: 'POST',
+          url: 'https://api.example.test',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(targetFetch).toHaveBeenCalledWith(new URL('https://api.example.test/'), expect.objectContaining({
+      body: content,
+    }))
   })
 
   it('rejects malformed fetch payloads after auth succeeds', async () => {
