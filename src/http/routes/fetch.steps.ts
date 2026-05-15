@@ -112,6 +112,7 @@ export async function executeFetchTargetStep(
 ): Promise<unknown> {
   const targetResult = await new ExecuteTargetFetchCommand({
     fetchImpl: context.route.targetFetch,
+    ...context.route.targetFetchOptions,
   }).execute({
     ...getParsedPayload(context).request,
     headers: getSanitizedHeaders(context).headers,
