@@ -5,7 +5,7 @@ export const DEFAULT_TARGET_REQUEST_TIMEOUT_MS = 300_000
 export const DEFAULT_REQUEST_BODY_LIMIT_BYTES = 5 * 1024 * 1024
 export const DEFAULT_RESPONSE_BODY_LIMIT_BYTES = 5 * 1024 * 1024
 
-type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>
+export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>
 
 interface ExecuteTargetFetchCommandOptions {
   fetchImpl?: FetchLike

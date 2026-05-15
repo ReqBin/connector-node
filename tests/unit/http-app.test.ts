@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FastifyInstance } from 'fastify'
 import { readFileSync } from 'node:fs'
 import { createApp } from '../../src/http/app.js'
@@ -370,6 +370,7 @@ describe('Fastify app factory', () => {
     pairingStore.pair('123456')
     app = await createApp({
       pairingStore,
+      targetFetch: vi.fn().mockResolvedValue(new Response(null)),
     })
 
     const response = await app.inject({
@@ -386,10 +387,10 @@ describe('Fastify app factory', () => {
       url: '/v1/fetch',
     })
 
-    expect(response.statusCode).toBe(501)
-    expect(response.json()).toEqual({
-      error: 'not-implemented',
-      message: 'Fetch execution is not implemented yet.',
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      StatusCode: 200,
+      Success: true,
     })
   })
 
@@ -398,6 +399,7 @@ describe('Fastify app factory', () => {
       auth: {
         authDisabled: true,
       },
+      targetFetch: vi.fn().mockResolvedValue(new Response(null)),
     })
 
     const response = await app.inject({
@@ -411,10 +413,10 @@ describe('Fastify app factory', () => {
       url: '/v1/fetch',
     })
 
-    expect(response.statusCode).toBe(501)
-    expect(response.json()).toEqual({
-      error: 'not-implemented',
-      message: 'Fetch execution is not implemented yet.',
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      StatusCode: 200,
+      Success: true,
     })
   })
 
@@ -550,10 +552,18 @@ describe('Fastify app factory', () => {
   })
 
   it('allows fetch payloads with headers that can be safely stripped', async () => {
+    const targetFetch = vi.fn().mockResolvedValue(new Response('target ok', {
+      headers: {
+        'content-type': 'text/plain',
+      },
+      status: 201,
+      statusText: 'Created',
+    }))
     app = await createApp({
       auth: {
         authDisabled: true,
       },
+      targetFetch,
     })
 
     const response = await app.inject({
@@ -567,10 +577,50 @@ describe('Fastify app factory', () => {
       url: '/v1/fetch',
     })
 
-    expect(response.statusCode).toBe(501)
-    expect(response.json()).toEqual({
-      error: 'not-implemented',
-      message: 'Fetch execution is not implemented yet.',
+    expect(targetFetch).toHaveBeenCalledWith(new URL('https://api.example.test/'), {
+      body: undefined,
+      headers: {
+        Accept: 'application/json',
+      },
+      method: 'GET',
+      redirect: 'manual',
+      signal: expect.any(AbortSignal),
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      Content: 'target ok',
+      ContentLength: 9,
+      ContentType: 'text/plain',
+      StatusCode: 201,
+      StatusDescription: 'Created',
+      Success: true,
+    })
+  })
+
+  it('returns target execution failures through the sender response contract', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+      targetFetch: vi.fn().mockRejectedValue(new Error('DNS failed')),
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          url: 'https://api.example.test',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      Content: 'Target request failed.',
+      StatusCode: 0,
+      StatusDescription: 'Error',
+      Success: false,
     })
   })
 
