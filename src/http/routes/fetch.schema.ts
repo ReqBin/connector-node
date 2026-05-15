@@ -1,3 +1,16 @@
+export const fetchEnvelopeRequestSchema = {
+  additionalProperties: true,
+  properties: {
+    deviceId: { type: 'string' },
+    json: {
+      description: 'Stringified ReqBin ApiRequest payload.',
+      type: 'string',
+    },
+    sessionId: { type: 'string' },
+  },
+  type: 'object',
+} as const
+
 export const fetchAuthErrorResponseSchema = {
   additionalProperties: false,
   properties: {

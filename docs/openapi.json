@@ -1,0 +1,518 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ReqBin Connector API",
+    "version": "0.1.0"
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    },
+    "schemas": {}
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "correlation-id",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "up"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "correlation-id",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "protocolVersion": {
+                      "type": "string",
+                      "enum": [
+                        "v1"
+                      ]
+                    },
+                    "version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "protocolVersion",
+                    "version"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/pair": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "code": {
+                    "pattern": "^\\d{6}$",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "correlation-id",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "tokenType": {
+                      "type": "string",
+                      "enum": [
+                        "Bearer"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "tokenType"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "attempt-limit",
+                        "expired",
+                        "invalid-code"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "attempt-limit",
+                        "expired",
+                        "invalid-code"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/fetch": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "properties": {
+                  "deviceId": {
+                    "type": "string"
+                  },
+                  "json": {
+                    "description": "Stringified ReqBin ApiRequest payload.",
+                    "type": "string"
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "correlation-id",
+            "required": false
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "Content": {
+                      "type": "string"
+                    },
+                    "ContentLength": {
+                      "type": "number"
+                    },
+                    "ContentRaw": {
+                      "type": "string"
+                    },
+                    "ContentType": {
+                      "type": "string"
+                    },
+                    "Elapsed": {
+                      "type": "number"
+                    },
+                    "Headers": {
+                      "type": "string"
+                    },
+                    "RedirectUrl": {
+                      "type": "string"
+                    },
+                    "Redirects": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "elapsed": {
+                            "type": "number"
+                          },
+                          "headers": {
+                            "type": "string"
+                          },
+                          "redirect_url": {
+                            "type": "string"
+                          },
+                          "status_code": {
+                            "type": "string"
+                          },
+                          "timings": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "Connecting": {
+                                "type": "number"
+                              },
+                              "DNS": {
+                                "type": "number"
+                              },
+                              "Receiving": {
+                                "type": "number"
+                              },
+                              "Sending": {
+                                "type": "number"
+                              },
+                              "TLS": {
+                                "type": "number"
+                              },
+                              "Total": {
+                                "type": "number"
+                              },
+                              "Waiting": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "Connecting",
+                              "DNS",
+                              "Receiving",
+                              "Sending",
+                              "TLS",
+                              "Total",
+                              "Waiting"
+                            ],
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "elapsed",
+                          "redirect_url",
+                          "status_code"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "RedirectsCount": {
+                      "type": "number"
+                    },
+                    "RedirectsTime": {
+                      "type": "number"
+                    },
+                    "StatusCode": {
+                      "type": "number"
+                    },
+                    "StatusDescription": {
+                      "type": "string"
+                    },
+                    "Success": {
+                      "type": "boolean"
+                    },
+                    "Timings": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "Connecting": {
+                          "type": "number"
+                        },
+                        "DNS": {
+                          "type": "number"
+                        },
+                        "Receiving": {
+                          "type": "number"
+                        },
+                        "Sending": {
+                          "type": "number"
+                        },
+                        "TLS": {
+                          "type": "number"
+                        },
+                        "Total": {
+                          "type": "number"
+                        },
+                        "Waiting": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "Connecting",
+                        "DNS",
+                        "Receiving",
+                        "Sending",
+                        "TLS",
+                        "Total",
+                        "Waiting"
+                      ],
+                      "type": "object"
+                    },
+                    "Version": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "Content",
+                    "ContentLength",
+                    "ContentRaw",
+                    "ContentType",
+                    "Elapsed",
+                    "Headers",
+                    "RedirectUrl",
+                    "Redirects",
+                    "RedirectsCount",
+                    "RedirectsTime",
+                    "StatusCode",
+                    "StatusDescription",
+                    "Success",
+                    "Timings",
+                    "Version"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "invalid-envelope",
+                        "invalid-method",
+                        "invalid-url",
+                        "blocked-host",
+                        "invalid-header",
+                        "malformed-json",
+                        "missing-url",
+                        "unsupported-scheme"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "invalid-token",
+                        "missing-token"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "correlation-id",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
