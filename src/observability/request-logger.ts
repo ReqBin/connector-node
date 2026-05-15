@@ -22,7 +22,13 @@ export interface TargetLogEntry extends BaseLogEntry {
   target: string
 }
 
-export type ConnectorLogEntry = RequestLogEntry | TargetLogEntry
+export interface FetchFailureLogEntry extends BaseLogEntry {
+  event: 'reqbin.connector.fetch.validation_failed'
+  reason: string
+  stage: 'auth' | 'headers' | 'payload' | 'target-policy'
+}
+
+export type ConnectorLogEntry = FetchFailureLogEntry | RequestLogEntry | TargetLogEntry
 export type ConnectorLogger = (entry: ConnectorLogEntry) => void
 
 declare module 'fastify' {
@@ -96,6 +102,20 @@ export function logTargetFailed(
     event: 'reqbin.connector.target.failed',
     method,
     ...sanitizeTargetUrlForLog(url),
+  })
+}
+
+export function logFetchValidationFailed(
+  logger: ConnectorLogger,
+  correlationId: string,
+  stage: FetchFailureLogEntry['stage'],
+  reason: string,
+): void {
+  logger({
+    correlationId,
+    event: 'reqbin.connector.fetch.validation_failed',
+    reason,
+    stage,
   })
 }
 

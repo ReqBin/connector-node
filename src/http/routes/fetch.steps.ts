@@ -5,6 +5,7 @@ import { MapTargetFetchResultCommand } from '../../fetch/commands/MapTargetFetch
 import { ParseFetchPayloadCommand } from '../../fetch/commands/ParseFetchPayloadCommand.js'
 import type { ConnectorSenderResponse, FetchPayloadSuccess } from '../../fetch/types.js'
 import {
+  logFetchValidationFailed,
   logTargetFailed,
   logTargetFinished,
   logTargetStarted,
@@ -48,6 +49,7 @@ export async function authorizeFetchRouteStep(
   const auth = authorizeBearerToken(context.request.headers.authorization, context.route.pairingStore, context.route.auth)
 
   if (!auth.ok) {
+    logFetchValidationFailed(context.route.logger ?? writeRequestLog, context.request.id, 'auth', auth.reason)
     return context.reply
       .code(401)
       .send({
@@ -65,6 +67,7 @@ export async function parseFetchPayloadStep(
 ): Promise<unknown> {
   const parsed = await new ParseFetchPayloadCommand().execute(context.request.body)
   if (!parsed.ok) {
+    logFetchValidationFailed(context.route.logger ?? writeRequestLog, context.request.id, 'payload', parsed.code)
     return context.reply
       .code(400)
       .send({
@@ -83,6 +86,7 @@ export async function validateFetchTargetStep(
 ): Promise<unknown> {
   const targetPolicy = validateTargetUrlPolicy(getParsedPayload(context).request.url)
   if (!targetPolicy.ok) {
+    logFetchValidationFailed(context.route.logger ?? writeRequestLog, context.request.id, 'target-policy', targetPolicy.reason)
     return context.reply
       .code(400)
       .send({
@@ -100,6 +104,7 @@ export async function sanitizeFetchHeadersStep(
 ): Promise<unknown> {
   const headerPolicy = sanitizeForwardedHeaders(getParsedPayload(context).request.headersText)
   if (!headerPolicy.ok) {
+    logFetchValidationFailed(context.route.logger ?? writeRequestLog, context.request.id, 'headers', headerPolicy.reason)
     return context.reply
       .code(400)
       .send({
