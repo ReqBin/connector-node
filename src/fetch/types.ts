@@ -55,6 +55,7 @@ export interface TargetFetchRedirect {
   elapsedMs: number
   headers: Record<string, string>
   headersText?: string
+  method: HttpMethod
   status: number
   timings: TargetFetchTimings
   url: string
@@ -99,6 +100,7 @@ export type TargetFetchResult = TargetFetchSuccess | TargetFetchFailure
 export interface ConnectorRedirect {
   elapsed: number
   headers?: string
+  method: string
   redirect_url: string
   status_code: string
   timings?: ConnectorTimings

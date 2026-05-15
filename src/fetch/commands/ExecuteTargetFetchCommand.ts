@@ -29,6 +29,14 @@ function getBodyByteLength(body: string | undefined): number {
   return body === undefined ? 0 : Buffer.byteLength(body, 'utf8')
 }
 
+function resolveRedirectRequestUrlText(location: string, nextUrl: URL): string {
+  try {
+    return new URL(location).href === nextUrl.href ? location : nextUrl.href
+  } catch {
+    return nextUrl.href
+  }
+}
+
 export class ExecuteTargetFetchCommand extends Command {
   private readonly fetchImpl: FetchLike
   private readonly maxRedirects: number
@@ -67,6 +75,7 @@ export class ExecuteTargetFetchCommand extends Command {
     let headers = request.headers
     let method = request.method
     let url = request.url
+    let urlText = request.url.href
     let hopStartedAt = startedAt
 
     try {
@@ -89,6 +98,7 @@ export class ExecuteTargetFetchCommand extends Command {
           }
 
           const nextUrl = new URL(redirectLocation, url)
+          const nextUrlText = resolveRedirectRequestUrlText(redirectLocation, nextUrl)
           const targetPolicy = validateTargetUrlPolicy(nextUrl)
           if (!targetPolicy.ok) {
             clearTimeout(timeout)
@@ -99,13 +109,14 @@ export class ExecuteTargetFetchCommand extends Command {
             elapsedMs: responseReceivedAt - hopStartedAt,
             headers: collectHeaders(response),
             headersText: getNodeResponseRawHeaders(response),
+            method,
             status: response.status,
             timings: createTargetTimings({
               phases,
               responseReceivedAt,
               startedAt: hopStartedAt,
             }),
-            url: nextUrl.href,
+            url: urlText,
           })
 
           if (shouldConvertRedirectToGet(response.status, method)) {
@@ -115,6 +126,7 @@ export class ExecuteTargetFetchCommand extends Command {
           }
 
           url = nextUrl
+          urlText = nextUrlText
           hopStartedAt = this.now()
           continue
         }
