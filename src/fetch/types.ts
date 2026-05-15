@@ -70,3 +70,38 @@ export interface TargetFetchFailure {
 }
 
 export type TargetFetchResult = TargetFetchSuccess | TargetFetchFailure
+
+export interface ConnectorRedirect {
+  elapsed: number
+  headers?: string
+  redirect_url: string
+  status_code: string
+}
+
+export interface ConnectorTimings {
+  Connecting: number
+  DNS: number
+  Receiving: number
+  Sending: number
+  TLS: number
+  Total: number
+  Waiting: number
+}
+
+export interface ConnectorSenderResponse {
+  Content: string
+  ContentLength: number
+  ContentRaw: string
+  ContentType: string
+  Elapsed: number
+  Headers: string
+  RedirectUrl: string
+  Redirects: ConnectorRedirect[]
+  RedirectsCount: number
+  RedirectsTime: number
+  StatusCode: number
+  StatusDescription: string
+  Success: boolean
+  Timings: ConnectorTimings
+  Version: string
+}
