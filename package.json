@@ -3,16 +3,19 @@
   "version": "0.1.0",
   "description": "ReqBin Connector (local agent): bridge browser HTTP(S) requests to resources in local network.",
   "type": "module",
-  "main": "src/index.js",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "exports": {
-    ".": "./src/index.js"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
   },
   "bin": {
-    "reqbin-agent": "./bin/reqbin-agent.js"
+    "reqbin-agent": "./dist/bin/reqbin-agent.js"
   },
   "files": [
-    "src",
-    "bin",
+    "dist",
     "README.md",
     "LICENSE"
   ],
@@ -34,9 +37,12 @@
     "access": "public"
   },
   "scripts": {
-    "start": "node bin/reqbin-agent.js",
+    "build": "tsc -p tsconfig.json",
+    "prestart": "npm run build",
+    "start": "node dist/bin/reqbin-agent.js",
     "test": "node -e \"console.log('ok')\"",
-    "prepublishOnly": "npm test"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "prepublishOnly": "npm test && npm run build"
   },
   "repository": {
     "type": "git",
