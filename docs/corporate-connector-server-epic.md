@@ -22,9 +22,8 @@ uses:
 - health-check timeout in the client: `3000ms`
 - developer command: `npx -y -p @reqbin/connector reqbin-agent`
 
-The new connector does not need to preserve legacy `/proxy` behavior unless a
-later migration plan explicitly asks for it. The stable API should use
-versioned endpoints.
+The new connector will not preserve legacy `/proxy` behavior for the MVP. The
+client will migrate to the stable versioned API separately.
 
 ## Target API
 
@@ -77,7 +76,8 @@ sender response.
 
 Request:
 
-- required header: `correlation-id`;
+- optional header: `correlation-id`. When absent, the connector generates one
+  and returns it in the response;
 - required auth header after pairing is enabled: `Authorization: Bearer <token>`;
 - content type: `application/json`;
 - body shape should support the current client `ApiRequest` envelope:
@@ -140,16 +140,15 @@ Binary handling:
 - return `Content` as decoded text for text-like MIME types;
 - compute `ContentLength` in bytes, not JavaScript string length.
 
-Open question for implementation: whether `ContentRaw` should always be present
-for text responses. The client supports optional `ContentRaw`, so the first
-implementation can keep it optional unless docs or compatibility require
-otherwise.
+`ContentRaw` is optional for text responses in the MVP because the client
+already supports optional `ContentRaw`. Binary or not-safely-decodable responses
+must include `ContentRaw`.
 
 ### `/proxy`
 
-Legacy endpoint. The target server design does not include `/proxy` by default.
-If a compatibility window is required, implement it as a separately documented
-alias to `/v1/fetch` with explicit tests and deprecation notes.
+Legacy endpoint. Do not implement `/proxy` in the new connector MVP. If a later
+client migration requires a compatibility window, add it as a separate approved
+story with explicit tests and deprecation notes.
 
 ## Security Model
 
@@ -168,19 +167,25 @@ Required defaults:
   tokens, API keys, or subscription tokens;
 - validate target scheme as `http:` or `https:` only;
 - apply target host/IP policy before sending the request;
-- reject metadata and link-local endpoints such as `169.254.169.254` unless an
-  explicit future policy allows them;
-- enforce request body limit;
-- enforce response body limit;
-- enforce target request timeout;
+- reject metadata and link-local endpoints such as `169.254.169.254` and
+  IPv6 `fe80::/10`;
+- enforce request body limit, default `5MB`;
+- enforce response body limit, default `5MB`;
+- enforce target request timeout, default `300000ms` / five minutes;
 - strip or block unsafe forwarded headers such as `host`, `content-length`,
   connection-hop headers, and connector auth headers.
 
 Host/IP policy:
 
 - the connector exists to reach local/private resources;
-- initial default should prefer deny-by-default with explicit allow rules;
-- exact final defaults need security/product approval before implementation.
+- allow/deny target lists are not part of the MVP;
+- public, private, local, and corporate network targets are allowed by default
+  as long as they use `http:` or `https:`;
+- metadata and link-local endpoints are blocked by default as a built-in safety
+  block, not as a general allow/deny-list feature;
+- the safety block exists to prevent local proxy access to cloud instance
+  metadata and other host-local infrastructure endpoints that are not normal
+  API debugging targets.
 
 Pairing model:
 
@@ -193,10 +198,12 @@ Pairing model:
   user participation;
 - pairing codes should expire quickly, for example after five minutes;
 - pairing attempts should be rate-limited;
-- tokens are stored locally by the connector as hashes where practical, not as
-  raw bearer values;
-- users can revoke/reset pairing from the CLI and, later, from an authenticated
-  local management endpoint;
+- paired tokens are stored in memory only for the MVP;
+- in-memory token values should still be generated as high-entropy bearer
+  tokens and must not be logged;
+- persistent token storage and token hashing are later stories;
+- users can revoke/reset memory-only pairing by restarting the connector for the
+  MVP;
 - `--no-auth` can exist only as an explicit development flag and must be visible
   in logs/startup output.
 
@@ -207,12 +214,12 @@ Suggested pairing endpoints:
 - `POST /v1/pair/reset`: authenticated or CLI-backed reset, not part of the
   first implementation unless explicitly planned.
 
-Open questions for implementation:
+Resolved MVP decisions:
 
-- exact token persistence location and file permissions;
-- whether pairing is required for `GET /version`;
-- whether the client stores the bearer token in localStorage or a more isolated
-  browser storage path.
+- pairing code is shown in terminal output only;
+- pairing token storage is memory-only;
+- `/version` is public;
+- browser-side token storage is handled by the client migration plan.
 
 ## CLI And Configuration
 
@@ -229,9 +236,9 @@ Required CLI/config options:
 - `--allow-origin <origin>`: repeatable allowlist extension;
 - `--dev`: allow local development origins and developer-friendly logs;
 - `--no-auth`: disable pairing/token auth for local development only;
-- `--request-timeout-ms <number>`;
-- `--request-body-limit-bytes <number>`;
-- `--response-body-limit-bytes <number>`;
+- `--request-timeout-ms <number>`: default `300000`;
+- `--request-body-limit-bytes <number>`: default `5242880`;
+- `--response-body-limit-bytes <number>`: default `5242880`;
 - `--version`;
 - `--help`.
 
@@ -253,13 +260,13 @@ Fastify should be configured with:
 Behavior:
 
 - if `correlation-id` is present, use it as the Fastify request id;
-- if absent, generate one for diagnostics, but `POST /v1/fetch` should still
-  validate the required header unless a later product decision makes generation
-  acceptable;
+- if absent, generate one and continue;
 - include `correlation-id` in responses;
 - pass the id through service commands and error mapping;
 - log request start/finish, validation failures, target request start/finish,
   target status, elapsed time, and sanitized error class.
+
+Logs are written to stdout as JSON. File logging is not part of the MVP.
 
 Do not log:
 
@@ -364,6 +371,8 @@ Redirect handling:
 - preserve method/body semantics according to HTTP redirect behavior before
   implementation; this needs a focused test plan for 301, 302, 303, 307, and
   308;
+- use browser-like redirect behavior;
+- default maximum redirect count is `10`;
 - map final response and redirect chain into `Redirects`, `RedirectsCount`,
   `RedirectsTime`, and `RedirectUrl`.
 
@@ -376,9 +385,13 @@ Timing model:
 - `Timings.Total` should be reported in seconds for compatibility with the
   existing client parser;
 - DNS, TCP connect, TLS, sending, waiting, and receiving timings cannot be
-  measured accurately through standard Node `fetch` alone. Until a lower-level
-  transport or diagnostics API is introduced, those fields should be `0` and
-  documented as unavailable rather than guessed.
+  measured accurately through standard Node `fetch` alone;
+- detailed timings are a product requirement. The implementation should use the
+  most capable practical Node transport layer, lower-level `http`/`https` hooks,
+  or `undici` diagnostics when available, rather than defaulting to simple
+  `fetch` if that would discard timing phases;
+- timing fields that still cannot be measured accurately should be returned as
+  `0` and documented as unavailable rather than guessed.
 
 ## OpenAPI Documentation
 
@@ -394,11 +407,9 @@ Requirements:
 - include examples for health, version, successful fetch, validation failure,
   and target transport failure;
 - add a script that writes the generated spec to a stable file, for example
-  `docs/openapi.json` or `openapi/reqbin-connector-v1.json`.
-
-Open question for implementation: whether generated OpenAPI output should be
-committed or produced during release. The first environment-prep slice should
-decide this before adding the script.
+  `docs/openapi.json` or `openapi/reqbin-connector-v1.json`;
+- keep generated OpenAPI current on push through validation or CI;
+- do not add Swagger UI for the MVP.
 
 ## TypeScript, Linting, Formatting, Tests
 
@@ -408,9 +419,9 @@ Use the client repo as the baseline:
 - Vitest for unit/integration tests;
 - V8 coverage provider;
 - ESLint 9 style from the client repo where practical;
-- Yarn Classic conventions can guide scripts, but this package currently uses
-  npm. Package-manager choice must be decided explicitly during environment
-  preparation.
+- npm remains the connector package manager. Yarn Classic conventions from the
+  client can guide script names and validation expectations, but this repo
+  should not migrate to Yarn for the MVP.
 
 Required scripts after environment setup:
 
@@ -514,9 +525,10 @@ Acceptance criteria:
 - Fastify uses `correlation-id` as request id header;
 - logs use `correlationId` field;
 - responses include `correlation-id`;
-- `/v1/fetch` validates required `correlation-id`;
+- missing `correlation-id` is generated by the server and returned in the
+  response;
 - logger redaction covers auth/cookie/token fields;
-- tests verify request id propagation and missing-id validation.
+- tests verify request id propagation and missing-id generation.
 
 Validation:
 
@@ -541,7 +553,8 @@ Acceptance criteria:
 - `--no-auth` disables auth only when explicitly configured;
 - startup logs clearly indicate auth-disabled mode;
 - token validation is isolated behind an interface for future persistent pairing;
-- token storage stores token hashes where practical;
+- token storage is memory-only for the MVP;
+- persistent token storage and token hashing are later stories;
 - no token values are logged;
 - tests cover valid pairing, invalid code, expired code, attempt limit, valid
   token, invalid token, missing token, and no-auth mode.
@@ -584,7 +597,8 @@ before the connector sends anything to protect the local machine and network.
 Acceptance criteria:
 
 - only `http:` and `https:` targets are allowed;
-- metadata/link-local/private/public policy is explicit and tested;
+- public, private, local, and corporate network targets are allowed by default;
+- metadata and link-local endpoint safety block is explicit and tested;
 - unsafe headers are blocked or stripped;
 - connector auth/correlation headers are not forwarded to the target unless
   explicitly allowed by policy;
@@ -606,12 +620,12 @@ still enforcing timeout and size limits.
 
 Acceptance criteria:
 
-- target fetch uses configured timeout;
+- target fetch uses configured timeout, default `300000ms`;
 - transport timeout aborts the underlying network operation;
 - `Invoker.limit({ timeout })` may wrap command execution only if it does not
   replace explicit transport cancellation;
-- request body limit is enforced before target fetch;
-- response body limit is enforced while reading the response;
+- request body limit is enforced before target fetch, default `5MB`;
+- response body limit is enforced while reading the response, default `5MB`;
 - timeout maps to a stable connector error response;
 - DNS/network/fetch failures map to stable connector error response;
 - retries are disabled by default and must not happen for unsafe methods unless
@@ -633,15 +647,19 @@ history can show where the local request went and how long redirects took.
 Acceptance criteria:
 
 - target fetch follows redirects manually up to a configured maximum;
+- default maximum redirect count is `10`;
 - redirect entries include status code, redirect URL, headers, and per-hop
   elapsed milliseconds;
 - relative `Location` headers are resolved against the current URL;
-- redirect method/body behavior is covered for 301, 302, 303, 307, and 308;
+- browser-like redirect method/body behavior is covered for 301, 302, 303, 307,
+  and 308;
 - redirect loops and max-redirect overflow map to stable connector errors;
 - `Redirects`, `RedirectsCount`, `RedirectsTime`, and `RedirectUrl` are
   populated consistently;
 - `Elapsed` includes the whole redirect chain;
 - `Timings.Total` is populated in seconds;
+- detailed timing fields use the maximum practical fidelity available from the
+  selected transport layer;
 - unsupported detailed timing fields are returned as `0` and documented.
 
 Validation:
@@ -765,22 +783,23 @@ Commit discipline:
 - do not proceed to the next story while Blocking, High, or Medium review
   findings remain unresolved or explicitly deferred.
 
-### Step 1: Decide Package Manager And Dependency Policy
+### Step 1: Add npm Dependency Baseline
 
-Goal: choose whether this repo stays npm-based or moves to Yarn Classic like
-the client.
+Goal: keep npm as the connector package manager and add the initial approved
+dependency baseline intentionally.
 
 Decision inputs:
 
 - current connector package has no lockfile and no dependencies;
-- client repo uses Yarn Classic;
+- client repo uses Yarn Classic, but the connector will stay npm-based for the
+  MVP;
 - npm package publishing already exists in GitHub Actions;
 - dependency changes affect install, CI, and publish workflow.
 
 Output:
 
-- documented package-manager decision;
-- approved list of initial dependencies:
+- npm lockfile is generated intentionally;
+- initial dependencies are added:
   - `fastify`;
   - `@fastify/swagger`;
   - optional `@fastify/cors` if CORS is not implemented directly;
@@ -794,6 +813,7 @@ Output:
 Validation:
 
 - dependency install succeeds;
+- `npm test` still runs;
 - lockfile is generated intentionally.
 
 ### Step 2: Add TypeScript Build Baseline
