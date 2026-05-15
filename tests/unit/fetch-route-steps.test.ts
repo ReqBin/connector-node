@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  authorizeFetchRouteStep,
   executeFetchTargetStep,
+  parseFetchPayloadStep,
   sanitizeFetchHeadersStep,
   validateFetchTargetStep,
   type FetchRouteChainContext,
@@ -141,5 +143,89 @@ describe('fetch route chain steps', () => {
       method: 'GET',
       target: 'https://api.example.test/fail',
     })
+  })
+
+  it('logs authentication failures without token values', async () => {
+    const logger = vi.fn()
+    const context = createBaseContext()
+    context.route.auth = undefined
+    context.route.logger = logger
+
+    await authorizeFetchRouteStep(vi.fn(), context)
+
+    expect(logger).toHaveBeenCalledWith({
+      correlationId: 'test-correlation-id',
+      event: 'reqbin.connector.fetch.validation_failed',
+      reason: 'missing-token',
+      stage: 'auth',
+    })
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('Bearer')
+  })
+
+  it('logs payload validation failures without payload values', async () => {
+    const logger = vi.fn()
+    const context = createBaseContext()
+    context.route.logger = logger
+    context.request.body = {
+      json: '{"secret"',
+    }
+
+    await parseFetchPayloadStep(vi.fn(), context)
+
+    expect(logger).toHaveBeenCalledWith({
+      correlationId: 'test-correlation-id',
+      event: 'reqbin.connector.fetch.validation_failed',
+      reason: 'malformed-json',
+      stage: 'payload',
+    })
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('secret')
+  })
+
+  it('logs target policy failures without target query values', async () => {
+    const logger = vi.fn()
+    const context = createBaseContext()
+    context.route.logger = logger
+    context.parsed = {
+      ok: true,
+      request: {
+        headersText: '',
+        method: 'GET',
+        url: new URL('http://169.254.169.254/latest?token=secret'),
+      },
+    }
+
+    await validateFetchTargetStep(vi.fn(), context)
+
+    expect(logger).toHaveBeenCalledWith({
+      correlationId: 'test-correlation-id',
+      event: 'reqbin.connector.fetch.validation_failed',
+      reason: 'blocked-host',
+      stage: 'target-policy',
+    })
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('secret')
+  })
+
+  it('logs forwarded header validation failures without header values', async () => {
+    const logger = vi.fn()
+    const context = createBaseContext()
+    context.route.logger = logger
+    context.parsed = {
+      ok: true,
+      request: {
+        headersText: 'Broken secret',
+        method: 'GET',
+        url: new URL('https://api.example.test'),
+      },
+    }
+
+    await sanitizeFetchHeadersStep(vi.fn(), context)
+
+    expect(logger).toHaveBeenCalledWith({
+      correlationId: 'test-correlation-id',
+      event: 'reqbin.connector.fetch.validation_failed',
+      reason: 'invalid-header',
+      stage: 'headers',
+    })
+    expect(JSON.stringify(logger.mock.calls)).not.toContain('secret')
   })
 })
