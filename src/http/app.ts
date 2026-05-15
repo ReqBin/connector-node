@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { createDefaultConnectorInfo, type ConnectorInfo } from './connector-info.js'
 import { registerCors, type CorsOptions } from './cors.js'
 import { registerRoutes } from './routes.js'
+import type { FetchLike } from '../fetch/commands/ExecuteTargetFetchCommand.js'
 import { CORRELATION_ID_HEADER, createCorrelationId, registerCorrelationIdHook } from '../observability/correlation-id.js'
 import { MemoryPairingStore, type PairingStore } from '../security/pairing.js'
 import type { TokenAuthOptions } from '../security/token-auth.js'
@@ -12,6 +13,7 @@ export interface CreateAppOptions {
   connectorInfo?: ConnectorInfo
   cors?: CorsOptions
   pairingStore?: PairingStore
+  targetFetch?: FetchLike
 }
 
 export async function createApp({
@@ -19,6 +21,7 @@ export async function createApp({
   connectorInfo = createDefaultConnectorInfo(),
   cors,
   pairingStore = new MemoryPairingStore(),
+  targetFetch,
 }: CreateAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     genReqId: createCorrelationId,
@@ -44,6 +47,7 @@ export async function createApp({
     auth,
     connectorInfo,
     pairingStore,
+    targetFetch,
   })
   registerCorrelationIdHook(app)
 

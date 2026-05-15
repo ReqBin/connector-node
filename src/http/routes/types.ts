@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import type { ConnectorInfo } from '../connector-info.js'
+import type { FetchLike } from '../../fetch/commands/ExecuteTargetFetchCommand.js'
 import type { PairingStore } from '../../security/pairing.js'
 import type { TokenAuthOptions } from '../../security/token-auth.js'
 
@@ -8,6 +9,7 @@ export interface RouteRegistrationContext {
   auth?: TokenAuthOptions
   connectorInfo: ConnectorInfo
   pairingStore: PairingStore
+  targetFetch?: FetchLike
 }
 
 export type RouteRegistrationStep = (

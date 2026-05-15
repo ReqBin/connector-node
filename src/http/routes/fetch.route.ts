@@ -1,9 +1,11 @@
 import {
   fetchAuthErrorResponseSchema,
-  fetchNotImplementedResponseSchema,
+  fetchSenderResponseSchema,
   fetchValidationErrorResponseSchema,
 } from './fetch.schema.js'
 import type { RouteRegistrationStep } from './types.js'
+import { ExecuteTargetFetchCommand } from '../../fetch/commands/ExecuteTargetFetchCommand.js'
+import { MapTargetFetchResultCommand } from '../../fetch/commands/MapTargetFetchResultCommand.js'
 import { ParseFetchPayloadCommand } from '../../fetch/commands/ParseFetchPayloadCommand.js'
 import { sanitizeForwardedHeaders } from '../../security/header-policy.js'
 import { validateTargetUrlPolicy } from '../../security/target-policy.js'
@@ -13,9 +15,9 @@ export const registerFetchRoute: RouteRegistrationStep = async (execute, context
   context.app.post('/v1/fetch', {
     schema: {
       response: {
+        200: fetchSenderResponseSchema,
         400: fetchValidationErrorResponseSchema,
         401: fetchAuthErrorResponseSchema,
-        501: fetchNotImplementedResponseSchema,
       },
     },
   }, async (request, reply) => {
@@ -60,12 +62,17 @@ export const registerFetchRoute: RouteRegistrationStep = async (execute, context
         })
     }
 
+    const targetResult = await new ExecuteTargetFetchCommand({
+      fetchImpl: context.targetFetch,
+    }).execute({
+      ...parsed.request,
+      headers: headerPolicy.headers,
+    })
+    const response = await new MapTargetFetchResultCommand().execute(targetResult)
+
     return reply
-      .code(501)
-      .send({
-        error: 'not-implemented',
-        message: 'Fetch execution is not implemented yet.',
-      })
+      .code(200)
+      .send(response)
   })
 
   await execute(context)

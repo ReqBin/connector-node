@@ -33,12 +33,71 @@ export const fetchValidationErrorResponseSchema = {
   type: 'object',
 } as const
 
-export const fetchNotImplementedResponseSchema = {
+const fetchTimingsSchema = {
   additionalProperties: false,
   properties: {
-    error: { const: 'not-implemented', type: 'string' },
-    message: { type: 'string' },
+    Connecting: { type: 'number' },
+    DNS: { type: 'number' },
+    Receiving: { type: 'number' },
+    Sending: { type: 'number' },
+    TLS: { type: 'number' },
+    Total: { type: 'number' },
+    Waiting: { type: 'number' },
   },
-  required: ['error', 'message'],
+  required: ['Connecting', 'DNS', 'Receiving', 'Sending', 'TLS', 'Total', 'Waiting'],
+  type: 'object',
+} as const
+
+const fetchRedirectSchema = {
+  additionalProperties: false,
+  properties: {
+    elapsed: { type: 'number' },
+    headers: { type: 'string' },
+    redirect_url: { type: 'string' },
+    status_code: { type: 'string' },
+  },
+  required: ['elapsed', 'redirect_url', 'status_code'],
+  type: 'object',
+} as const
+
+export const fetchSenderResponseSchema = {
+  additionalProperties: false,
+  properties: {
+    Content: { type: 'string' },
+    ContentLength: { type: 'number' },
+    ContentRaw: { type: 'string' },
+    ContentType: { type: 'string' },
+    Elapsed: { type: 'number' },
+    Headers: { type: 'string' },
+    RedirectUrl: { type: 'string' },
+    Redirects: {
+      items: fetchRedirectSchema,
+      type: 'array',
+    },
+    RedirectsCount: { type: 'number' },
+    RedirectsTime: { type: 'number' },
+    StatusCode: { type: 'number' },
+    StatusDescription: { type: 'string' },
+    Success: { type: 'boolean' },
+    Timings: fetchTimingsSchema,
+    Version: { type: 'string' },
+  },
+  required: [
+    'Content',
+    'ContentLength',
+    'ContentRaw',
+    'ContentType',
+    'Elapsed',
+    'Headers',
+    'RedirectUrl',
+    'Redirects',
+    'RedirectsCount',
+    'RedirectsTime',
+    'StatusCode',
+    'StatusDescription',
+    'Success',
+    'Timings',
+    'Version',
+  ],
   type: 'object',
 } as const
