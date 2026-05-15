@@ -6,11 +6,13 @@ import {
   openApiResponseSchema,
   fetchAuthErrorResponseSchema,
   fetchNotImplementedResponseSchema,
+  fetchValidationErrorResponseSchema,
   pairErrorResponseSchema,
   pairRequestSchema,
   pairSuccessResponseSchema,
   versionResponseSchema,
 } from './schemas.js'
+import { ParseFetchPayloadCommand } from '../fetch/commands/ParseFetchPayloadCommand.js'
 import type { PairingFailure, PairingStore } from '../security/pairing.js'
 import { authorizeBearerToken, type TokenAuthOptions } from '../security/token-auth.js'
 
@@ -54,6 +56,7 @@ const registerFetchRoute: RouteRegistrationStep = async (execute, context) => {
   context.app.post('/v1/fetch', {
     schema: {
       response: {
+        400: fetchValidationErrorResponseSchema,
         401: fetchAuthErrorResponseSchema,
         501: fetchNotImplementedResponseSchema,
       },
@@ -67,6 +70,16 @@ const registerFetchRoute: RouteRegistrationStep = async (execute, context) => {
         .send({
           error: auth.reason,
           message: 'Authentication failed.',
+        })
+    }
+
+    const parsed = await new ParseFetchPayloadCommand().execute(request.body)
+    if (!parsed.ok) {
+      return reply
+        .code(400)
+        .send({
+          error: parsed.code,
+          message: parsed.message,
         })
     }
 
