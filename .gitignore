@@ -16,6 +16,7 @@ __MACOSX/
 # Local agent configuration
 .codex/
 .agents/
+AGENTS.md
 
 # Builds / coverage
 dist/
