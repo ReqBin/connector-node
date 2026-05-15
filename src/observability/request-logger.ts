@@ -8,6 +8,7 @@ interface BaseLogEntry {
 export interface RequestLogEntry extends BaseLogEntry {
   elapsedMs?: number
   event: 'reqbin.connector.request.finished' | 'reqbin.connector.request.started'
+  hasQuery: boolean
   method: string
   statusCode?: number
   url: string
@@ -48,11 +49,14 @@ function createRequestLogEntry(
   event: RequestLogEntry['event'],
   details: Pick<RequestLogEntry, 'elapsedMs' | 'statusCode'> = {},
 ): RequestLogEntry {
+  const url = new URL(request.url, 'http://localhost')
+
   return {
     correlationId: request.id,
     event,
+    hasQuery: url.search.length > 0,
     method: request.method,
-    url: request.url,
+    url: url.pathname,
     ...details,
   }
 }

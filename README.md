@@ -90,7 +90,7 @@ The legacy `POST /proxy` endpoint is not implemented.
 
 All routes accept `correlation-id`. If it is missing, the server generates one and returns it in the response header.
 
-Each request logs start/finish JSON events to stdout with `correlationId`, method, URL, status code, and elapsed time. The fetch pipeline also logs target request start/finish/failure, validation failures, and stripped forwarded-header warnings. Payloads and credentials are intentionally not logged.
+Each request logs start/finish JSON events to stdout with `correlationId`, method, sanitized path, `hasQuery`, status code, and elapsed time. The fetch pipeline also logs target request start/finish/failure, validation failures, and stripped forwarded-header warnings. Payloads, query values, and credentials are intentionally not logged.
 
 ## Redirects And Timings
 

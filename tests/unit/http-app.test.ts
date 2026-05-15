@@ -75,6 +75,7 @@ describe('Fastify app factory', () => {
       {
         correlationId: 'reqbin-test-correlation',
         event: 'reqbin.connector.request.started',
+        hasQuery: false,
         method: 'GET',
         url: '/health',
       },
@@ -82,11 +83,38 @@ describe('Fastify app factory', () => {
         correlationId: 'reqbin-test-correlation',
         elapsedMs: expect.any(Number),
         event: 'reqbin.connector.request.finished',
+        hasQuery: false,
         method: 'GET',
         statusCode: 200,
         url: '/health',
       },
     ])
+  })
+
+  it('does not log incoming request query values', async () => {
+    const testApp = await createTestApp()
+
+    await testApp.inject({
+      headers: {
+        'correlation-id': 'reqbin-test-correlation',
+      },
+      method: 'GET',
+      url: '/health?token=secret',
+    })
+
+    const entries = consoleLog.mock.calls.map(([entry]) => JSON.parse(String(entry)))
+
+    expect(entries).toEqual([
+      expect.objectContaining({
+        hasQuery: true,
+        url: '/health',
+      }),
+      expect.objectContaining({
+        hasQuery: true,
+        url: '/health',
+      }),
+    ])
+    expect(JSON.stringify(entries)).not.toContain('secret')
   })
 
   it('allows CORS requests from default ReqBin origins', async () => {

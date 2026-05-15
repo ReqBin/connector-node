@@ -30,9 +30,10 @@ current MVP implementation:
   `--response-body-limit-bytes`, `--max-redirects`, `--help`, and `--version`;
 - pairing uses a terminal-displayed six-digit code, short expiration,
   attempt limiting, and memory-only tokens;
-- request logs are written to stdout as JSON with `correlationId`, method, URL,
-  status code, and elapsed time; target lifecycle, validation failure, and
-  stripped-header warning logs are emitted without payloads or credentials;
+- request logs are written to stdout as JSON with `correlationId`, method,
+  sanitized path, query-presence flag, status code, and elapsed time; target
+  lifecycle, validation failure, and stripped-header warning logs are emitted
+  without payloads, query values, or credentials;
 - target request/response body limits default to `5MB`;
 - the Fastify incoming envelope limit allows the JSON wrapper around the `5MB`
   target body while the target body limit remains enforced by the fetch command;
