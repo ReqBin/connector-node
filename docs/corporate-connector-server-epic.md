@@ -12,6 +12,42 @@ should be implemented in TypeScript with Fastify, generated OpenAPI
 documentation, explicit security defaults, structured logs, correlation-id
 tracking, and meaningful 100% test coverage for new behavior.
 
+## Current Implementation Snapshot
+
+This document is the implementation plan and acceptance baseline. As of the
+current MVP implementation:
+
+- the server is TypeScript + Fastify with route files split by endpoint;
+- `@webquarx/design-patterns` is used for route registration and the `/v1/fetch`
+  Chain of Responsibility;
+- OpenAPI is generated from route schemas and exported to `docs/openapi.json`
+  through `npm run openapi:export`;
+- supported runtime endpoints are `GET /health`, `GET /version`,
+  `GET /openapi.json`, `POST /v1/pair`, and `POST /v1/fetch`;
+- legacy `POST /proxy` is intentionally not implemented;
+- CLI flags include `--host`, `--port`, `--allow-origin`, `--dev`, `--no-auth`,
+  `--request-timeout-ms`, `--request-body-limit-bytes`,
+  `--response-body-limit-bytes`, `--max-redirects`, `--help`, and `--version`;
+- pairing uses a terminal-displayed six-digit code, short expiration,
+  attempt limiting, and memory-only tokens;
+- request logs are written to stdout as JSON with `correlationId`, method, URL,
+  status code, and elapsed time; payloads and credentials are not logged;
+- target request/response body limits default to `5MB`;
+- the Fastify incoming envelope limit allows the JSON wrapper around the `5MB`
+  target body while the target body limit remains enforced by the fetch command;
+- target request timeout defaults to five minutes;
+- metadata/link-local target blocks are implemented; general allow/deny lists
+  remain out of scope for the MVP;
+- redirects are followed manually up to `10`, each redirect records its own
+  elapsed/timing object, and the final response reports total elapsed time.
+
+Known timing limitation:
+
+- standard Node `fetch` does not reliably expose DNS, TCP connect, TLS, or send
+  phase timings. Those fields are returned as `0` rather than guessed. `Total`,
+  `Waiting`, redirect elapsed values, and final response receiving time are
+  measured with the available transport surface.
+
 ## Product Context
 
 The client currently has a Local Server submit route. The existing client code
