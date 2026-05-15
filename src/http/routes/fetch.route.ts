@@ -1,9 +1,11 @@
 import { useChain } from '@webquarx/design-patterns'
 import {
   fetchAuthErrorResponseSchema,
+  fetchEnvelopeRequestSchema,
   fetchSenderResponseSchema,
   fetchValidationErrorResponseSchema,
 } from './fetch.schema.js'
+import { correlationIdHeaderSchema } from './common.schema.js'
 import {
   authorizeFetchRouteStep,
   executeFetchTargetStep,
@@ -26,11 +28,18 @@ export const registerFetchRoute: RouteRegistrationStep = async (execute, context
 
   context.app.post('/v1/fetch', {
     schema: {
+      body: fetchEnvelopeRequestSchema,
+      headers: correlationIdHeaderSchema,
       response: {
         200: fetchSenderResponseSchema,
         400: fetchValidationErrorResponseSchema,
         401: fetchAuthErrorResponseSchema,
       },
+      security: [
+        {
+          BearerAuth: [],
+        },
+      ],
     },
   }, async (request, reply) => {
     return fetchRouteChain.execute({

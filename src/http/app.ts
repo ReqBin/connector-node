@@ -48,6 +48,14 @@ export async function createApp({
         title: 'ReqBin Connector API',
         version: connectorInfo.version,
       },
+      components: {
+        securitySchemes: {
+          BearerAuth: {
+            scheme: 'bearer',
+            type: 'http',
+          },
+        },
+      },
       openapi: '3.0.3',
     },
   })

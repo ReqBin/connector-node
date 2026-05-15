@@ -1,4 +1,5 @@
 import type { FastifyRequest } from 'fastify'
+import { correlationIdHeaderSchema } from './common.schema.js'
 import { pairErrorResponseSchema, pairRequestSchema, pairSuccessResponseSchema } from './pair.schema.js'
 import type { RouteRegistrationStep } from './types.js'
 import type { PairingFailure } from '../../security/pairing.js'
@@ -19,6 +20,7 @@ export const registerPairRoute: RouteRegistrationStep = async (execute, context)
   context.app.post('/v1/pair', {
     schema: {
       body: pairRequestSchema,
+      headers: correlationIdHeaderSchema,
       response: {
         200: pairSuccessResponseSchema,
         401: pairErrorResponseSchema,
