@@ -1,7 +1,11 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 
-export interface RequestLogEntry {
+interface BaseLogEntry {
   correlationId: string
+  event: string
+}
+
+export interface RequestLogEntry extends BaseLogEntry {
   elapsedMs?: number
   event: 'reqbin.connector.request.finished' | 'reqbin.connector.request.started'
   method: string
@@ -9,7 +13,17 @@ export interface RequestLogEntry {
   url: string
 }
 
-export type ConnectorRequestLogger = (entry: RequestLogEntry) => void
+export interface TargetLogEntry extends BaseLogEntry {
+  elapsedMs?: number
+  event: 'reqbin.connector.target.failed' | 'reqbin.connector.target.finished' | 'reqbin.connector.target.started'
+  hasQuery: boolean
+  method: string
+  statusCode?: number
+  target: string
+}
+
+export type ConnectorLogEntry = RequestLogEntry | TargetLogEntry
+export type ConnectorLogger = (entry: ConnectorLogEntry) => void
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -31,13 +45,63 @@ function createRequestLogEntry(
   }
 }
 
-export function writeRequestLog(entry: RequestLogEntry): void {
+export function writeRequestLog(entry: ConnectorLogEntry): void {
   console.log(JSON.stringify(entry))
+}
+
+export function sanitizeTargetUrlForLog(url: URL): Pick<TargetLogEntry, 'hasQuery' | 'target'> {
+  return {
+    hasQuery: url.search.length > 0,
+    target: `${url.origin}${url.pathname}`,
+  }
+}
+
+export function logTargetStarted(logger: ConnectorLogger, correlationId: string, method: string, url: URL): void {
+  logger({
+    correlationId,
+    event: 'reqbin.connector.target.started',
+    method,
+    ...sanitizeTargetUrlForLog(url),
+  })
+}
+
+export function logTargetFinished(
+  logger: ConnectorLogger,
+  correlationId: string,
+  method: string,
+  url: URL,
+  statusCode: number,
+  elapsedMs: number,
+): void {
+  logger({
+    correlationId,
+    elapsedMs,
+    event: 'reqbin.connector.target.finished',
+    method,
+    statusCode,
+    ...sanitizeTargetUrlForLog(url),
+  })
+}
+
+export function logTargetFailed(
+  logger: ConnectorLogger,
+  correlationId: string,
+  method: string,
+  url: URL,
+  elapsedMs: number,
+): void {
+  logger({
+    correlationId,
+    elapsedMs,
+    event: 'reqbin.connector.target.failed',
+    method,
+    ...sanitizeTargetUrlForLog(url),
+  })
 }
 
 export function registerRequestLoggingHooks(
   app: FastifyInstance,
-  logger: ConnectorRequestLogger = writeRequestLog,
+  logger: ConnectorLogger = writeRequestLog,
 ): void {
   app.addHook('onRequest', async (request) => {
     request.requestStartedAt = Date.now()
