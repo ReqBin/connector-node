@@ -176,6 +176,65 @@ describe('ExecuteTargetFetchCommand', () => {
     })
   })
 
+  it('records redirected source URLs using browser-normalized absolute locations', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: 'https://api.example.test',
+        },
+        status: 301,
+      }))
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: 'https://api.example.test/next',
+        },
+        status: 302,
+      }))
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: 'https://api.example.test/final',
+        },
+        status: 302,
+      }))
+      .mockResolvedValueOnce(new Response('done'))
+    const now = vi.fn()
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(1010)
+      .mockReturnValueOnce(1011)
+      .mockReturnValueOnce(1020)
+      .mockReturnValueOnce(1021)
+      .mockReturnValueOnce(1030)
+      .mockReturnValueOnce(1031)
+      .mockReturnValueOnce(1040)
+      .mockReturnValueOnce(1050)
+
+    const result = await new ExecuteTargetFetchCommand({
+      fetchImpl,
+      now,
+    }).execute({
+      ...baseRequest,
+      body: undefined,
+      method: 'GET',
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      response: {
+        redirects: [
+          {
+            url: 'https://api.example.test/resource',
+          },
+          {
+            url: 'https://api.example.test',
+          },
+          {
+            url: 'https://api.example.test/next',
+          },
+        ],
+      },
+    })
+  })
+
   it('preserves request method and body for temporary redirects', async () => {
     const fetchImpl = vi.fn()
       .mockResolvedValueOnce(new Response(null, {
