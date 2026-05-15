@@ -8,12 +8,13 @@ import { getRedirectLocation, isRedirectStatus, shouldConvertRedirectToGet, stri
 import { collectHeaders, readResponseBody } from '../target-response.js'
 import { createTargetFetchFailure, isTargetFetchFailure } from '../target-fetch-failure.js'
 import { createTargetTimings } from '../target-timings.js'
+import {
+  DEFAULT_MAX_REDIRECTS,
+  DEFAULT_REQUEST_BODY_LIMIT_BYTES,
+  DEFAULT_RESPONSE_BODY_LIMIT_BYTES,
+  DEFAULT_TARGET_REQUEST_TIMEOUT_MS,
+} from '../../config/limits.js'
 import { validateTargetUrlPolicy } from '../../security/target-policy.js'
-
-export const DEFAULT_TARGET_REQUEST_TIMEOUT_MS = 300_000
-export const DEFAULT_REQUEST_BODY_LIMIT_BYTES = 5 * 1024 * 1024
-export const DEFAULT_RESPONSE_BODY_LIMIT_BYTES = 5 * 1024 * 1024
-export const DEFAULT_MAX_REDIRECTS = 10
 
 export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>
 
