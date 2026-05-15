@@ -72,6 +72,21 @@ describe('pairing', () => {
     expect(store.hasToken('token-1')).toBe(false)
   })
 
+  it('rejects pairing codes at their exact expiry time', () => {
+    let now = 1000
+    const store = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+      now: () => now,
+      ttlMs: 10,
+    })
+    now = 1010
+
+    expect(store.pair('123456')).toEqual({
+      ok: false,
+      reason: 'expired',
+    })
+  })
+
   it('enforces the pairing attempt limit before accepting a code', () => {
     const store = new MemoryPairingStore({
       codeGenerator: () => '123456',

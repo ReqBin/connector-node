@@ -81,7 +81,7 @@ export class MemoryPairingStore implements PairingStore {
       return { ok: false, reason: 'attempt-limit' }
     }
 
-    if (this.now() > this.expiresAt) {
+    if (this.now() >= this.expiresAt) {
       return { ok: false, reason: 'expired' }
     }
 
