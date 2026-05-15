@@ -45,15 +45,26 @@ export type FetchPayloadResult = FetchPayloadSuccess | FetchPayloadFailure
 
 export type TargetFetchErrorCode =
   | 'network-error'
+  | 'blocked-redirect'
   | 'request-body-too-large'
   | 'response-body-too-large'
+  | 'too-many-redirects'
   | 'timeout'
+
+export interface TargetFetchRedirect {
+  elapsedMs: number
+  headers: Record<string, string>
+  status: number
+  url: string
+}
 
 export interface TargetFetchResponse {
   body: Uint8Array
   contentType: string
   elapsedMs: number
   headers: Record<string, string>
+  redirects?: TargetFetchRedirect[]
+  redirectsTimeMs?: number
   status: number
   statusText: string
 }

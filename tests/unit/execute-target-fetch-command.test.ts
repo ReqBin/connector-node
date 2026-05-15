@@ -40,7 +40,10 @@ describe('ExecuteTargetFetchCommand', () => {
       status: 202,
       statusText: 'Accepted',
     }))
-    const now = vi.fn().mockReturnValueOnce(1000).mockReturnValueOnce(1042)
+    const now = vi.fn()
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(1020)
+      .mockReturnValueOnce(1042)
 
     const result = await new ExecuteTargetFetchCommand({
       fetchImpl,
@@ -68,6 +71,8 @@ describe('ExecuteTargetFetchCommand', () => {
           'content-type': 'text/plain',
           'x-target': 'ok',
         },
+        redirects: [],
+        redirectsTimeMs: 0,
         status: 202,
         statusText: 'Accepted',
       },
@@ -85,6 +90,198 @@ describe('ExecuteTargetFetchCommand', () => {
       response: {
         body: new Uint8Array(),
       },
+    })
+  })
+
+  it('follows browser-like redirects and records redirect timings', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: '/next',
+          'x-hop': 'first',
+        },
+        status: 302,
+        statusText: 'Found',
+      }))
+      .mockResolvedValueOnce(new Response('done', {
+        status: 200,
+        statusText: 'OK',
+      }))
+    const now = vi.fn()
+      .mockReturnValueOnce(1000)
+      .mockReturnValueOnce(1025)
+      .mockReturnValueOnce(1030)
+      .mockReturnValueOnce(1080)
+      .mockReturnValueOnce(1100)
+
+    const result = await new ExecuteTargetFetchCommand({
+      fetchImpl,
+      now,
+    }).execute({
+      ...baseRequest,
+      body: 'payload',
+    })
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(1, baseRequest.url, expect.objectContaining({
+      body: 'payload',
+      method: 'POST',
+    }))
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, new URL('https://api.example.test/next'), expect.objectContaining({
+      body: undefined,
+      method: 'GET',
+    }))
+    expect(result).toMatchObject({
+      ok: true,
+      response: {
+        elapsedMs: 100,
+        redirects: [{
+          elapsedMs: 25,
+          headers: {
+            location: '/next',
+            'x-hop': 'first',
+          },
+          status: 302,
+          url: 'https://api.example.test/next',
+        }],
+        redirectsTimeMs: 25,
+      },
+    })
+  })
+
+  it('preserves request method and body for temporary redirects', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: 'https://api.example.test/preserved',
+        },
+        status: 307,
+      }))
+      .mockResolvedValueOnce(new Response(null))
+
+    await new ExecuteTargetFetchCommand({
+      fetchImpl,
+    }).execute({
+      ...baseRequest,
+      body: 'payload',
+    })
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(2, new URL('https://api.example.test/preserved'), expect.objectContaining({
+      body: 'payload',
+      method: 'POST',
+    }))
+  })
+
+  it('uses browser-like method conversion for see-other redirects', async () => {
+    const putFetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: 'https://api.example.test/see-other',
+        },
+        status: 303,
+      }))
+      .mockResolvedValueOnce(new Response(null))
+    const headFetchImpl = vi.fn()
+      .mockResolvedValueOnce(new Response(null, {
+        headers: {
+          location: 'https://api.example.test/head',
+        },
+        status: 303,
+      }))
+      .mockResolvedValueOnce(new Response(null))
+
+    await new ExecuteTargetFetchCommand({
+      fetchImpl: putFetchImpl,
+    }).execute({
+      ...baseRequest,
+      body: 'payload',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      method: 'PUT',
+    })
+    await new ExecuteTargetFetchCommand({
+      fetchImpl: headFetchImpl,
+    }).execute({
+      ...baseRequest,
+      method: 'HEAD',
+    })
+
+    expect(putFetchImpl).toHaveBeenNthCalledWith(2, new URL('https://api.example.test/see-other'), expect.objectContaining({
+      body: undefined,
+      headers: {},
+      method: 'GET',
+    }))
+    expect(headFetchImpl).toHaveBeenNthCalledWith(2, new URL('https://api.example.test/head'), expect.objectContaining({
+      body: undefined,
+      method: 'HEAD',
+    }))
+  })
+
+  it('treats redirects without a usable location as final responses', async () => {
+    const missingLocationResult = await new ExecuteTargetFetchCommand({
+      fetchImpl: vi.fn().mockResolvedValue(new Response(null, {
+        status: 302,
+      })),
+    }).execute(baseRequest)
+    const blankLocationResult = await new ExecuteTargetFetchCommand({
+      fetchImpl: vi.fn().mockResolvedValue(new Response(null, {
+        headers: {
+          location: ' ',
+        },
+        status: 302,
+      })),
+    }).execute(baseRequest)
+
+    expect(missingLocationResult).toMatchObject({
+      ok: true,
+      response: {
+        redirects: [],
+        status: 302,
+      },
+    })
+    expect(blankLocationResult).toMatchObject({
+      ok: true,
+      response: {
+        redirects: [],
+        status: 302,
+      },
+    })
+  })
+
+  it('rejects redirect chains that exceed the configured limit', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(null, {
+      headers: {
+        location: 'https://api.example.test/next',
+      },
+      status: 302,
+    }))
+
+    const result = await new ExecuteTargetFetchCommand({
+      fetchImpl,
+    }).execute(baseRequest)
+
+    expect(fetchImpl).toHaveBeenCalledTimes(11)
+    expect(result).toEqual({
+      code: 'too-many-redirects',
+      message: 'Target redirect chain exceeds the configured limit.',
+      ok: false,
+    })
+  })
+
+  it('rejects redirects to blocked connector targets', async () => {
+    const result = await new ExecuteTargetFetchCommand({
+      fetchImpl: vi.fn().mockResolvedValue(new Response(null, {
+        headers: {
+          location: 'http://169.254.169.254/latest/meta-data',
+        },
+        status: 302,
+      })),
+    }).execute(baseRequest)
+
+    expect(result).toEqual({
+      code: 'blocked-redirect',
+      message: 'Redirect target host is blocked by connector policy.',
+      ok: false,
     })
   })
 
