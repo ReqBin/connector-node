@@ -147,7 +147,7 @@ non-2xx upstream statuses:
 {
   "Success": true,
   "Version": "1.1",
-  "StatusCode": 200,
+  "StatusCode": "200",
   "StatusDescription": "OK",
   "Headers": "content-type: application/json\n",
   "Content": "{\"ok\":true}",
@@ -169,7 +169,7 @@ non-2xx upstream statuses:
 
 Response for connector-side validation or target transport failure should still
 use a stable sender-response-like body where practical, with `Success: false`,
-`StatusCode: 0`, `StatusDescription: "Error"` or a more specific description,
+`StatusCode: "0"`, `StatusDescription: "Error"` or a more specific description,
 and a short `Content` error message. Do not include secrets or full target
 payloads in error messages.
 
@@ -688,16 +688,16 @@ Acceptance criteria:
 
 - target fetch follows redirects manually up to a configured maximum;
 - default maximum redirect count is `10`;
-- redirect entries include status code, redirect URL, headers, and per-hop
-  elapsed milliseconds;
+- redirect entries include status code, method, source URL, headers, and
+  per-hop elapsed milliseconds;
 - relative `Location` headers are resolved against the current URL;
 - browser-like redirect method/body behavior is covered for 301, 302, 303, 307,
   and 308;
 - redirect loops and max-redirect overflow map to stable connector errors;
-- `Redirects`, `RedirectsCount`, `RedirectsTime`, and `RedirectUrl` are
-  populated consistently;
-- `Elapsed` includes the whole redirect chain;
-- `Timings.Total` is populated in seconds;
+- `Redirects`, `RedirectsCount`, `RedirectsTime`, and `RedirectUrl` follow
+  `docs/fetch-sender-response-contract.md`;
+- `Elapsed` and `Timings.Total` describe the final hop; redirect time is
+  available through `RedirectsTime` and per-redirect timing entries;
 - detailed timing fields use the maximum practical fidelity available from the
   selected transport layer;
 - unsupported detailed timing fields are returned as `0` and documented.
