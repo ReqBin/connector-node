@@ -19,6 +19,8 @@ export const fetchValidationErrorResponseSchema = {
         'invalid-envelope',
         'invalid-method',
         'invalid-url',
+        'blocked-host',
+        'invalid-header',
         'malformed-json',
         'missing-url',
         'unsupported-scheme',

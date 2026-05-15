@@ -500,6 +500,80 @@ describe('Fastify app factory', () => {
     })
   })
 
+  it('rejects fetch payloads for blocked target hosts after auth succeeds', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          url: 'http://169.254.169.254/latest/meta-data',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      error: 'blocked-host',
+      message: 'Target host is blocked by connector policy.',
+    })
+  })
+
+  it('rejects malformed forwarded headers after auth succeeds', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          headers: 'Accept: application/json\nBroken Header',
+          url: 'https://api.example.test',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      error: 'invalid-header',
+      message: 'Forwarded header block contains an invalid header.',
+    })
+  })
+
+  it('allows fetch payloads with headers that can be safely stripped', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          headers: 'Host: api.example.test\nContent-Length: 12\nAccept: application/json',
+          url: 'https://api.example.test',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(501)
+    expect(response.json()).toEqual({
+      error: 'not-implemented',
+      message: 'Fetch execution is not implemented yet.',
+    })
+  })
+
   it('builds connector metadata with defaults for invalid package fields', () => {
     expect(createConnectorInfo({
       name: '',
