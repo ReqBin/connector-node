@@ -98,7 +98,10 @@ function shouldConvertRedirectToGet(status: number, method: string): boolean {
 }
 
 function stripBodyHeaders(headers: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'content-type'))
+  return Object.fromEntries(Object.entries(headers).filter(([name]) => {
+    const normalizedName = name.toLowerCase()
+    return normalizedName !== 'content-length' && normalizedName !== 'content-type'
+  }))
 }
 
 export class ExecuteTargetFetchCommand extends Command {

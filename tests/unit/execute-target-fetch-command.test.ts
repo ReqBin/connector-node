@@ -195,6 +195,7 @@ describe('ExecuteTargetFetchCommand', () => {
       ...baseRequest,
       body: 'payload',
       headers: {
+        'Content-Length': '7',
         'Content-Type': 'text/plain',
       },
       method: 'PUT',
