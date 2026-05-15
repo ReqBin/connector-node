@@ -1,4 +1,5 @@
 import { Command } from '@webquarx/design-patterns'
+import { performance } from 'node:perf_hooks'
 import type {
   ExecutableFetchRequest,
   TargetFetchRedirect,
@@ -48,7 +49,7 @@ export class ExecuteTargetFetchCommand extends Command {
   constructor({
     fetchImpl = nodeTargetFetch,
     maxRedirects = DEFAULT_MAX_REDIRECTS,
-    now = Date.now,
+    now = () => performance.now(),
     requestBodyLimitBytes = DEFAULT_REQUEST_BODY_LIMIT_BYTES,
     responseBodyLimitBytes = DEFAULT_RESPONSE_BODY_LIMIT_BYTES,
     timeoutMs = DEFAULT_TARGET_REQUEST_TIMEOUT_MS,

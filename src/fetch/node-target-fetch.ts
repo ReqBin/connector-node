@@ -1,5 +1,6 @@
 import http from 'node:http'
 import https from 'node:https'
+import { performance } from 'node:perf_hooks'
 import { Readable } from 'node:stream'
 import type { TargetFetchTimings } from './types.js'
 
@@ -77,7 +78,7 @@ export async function nodeTargetFetch(input: string | URL, init: RequestInit = {
   const url = input instanceof URL ? input : new URL(input)
   const transport = url.protocol === 'https:' ? https : http
   const body = getBodyBuffer(init.body)
-  const startedAt = Date.now()
+  const startedAt = performance.now()
 
   return new Promise<Response>((resolve, reject) => {
     let socketAssignedAt: number | undefined
@@ -90,7 +91,7 @@ export async function nodeTargetFetch(input: string | URL, init: RequestInit = {
       headers: getHeaders(init.headers),
       method: init.method,
     }, (incomingMessage) => {
-      const responseReceivedAt = Date.now()
+      const responseReceivedAt = performance.now()
       const headers = new Headers()
       for (const [name, value] of Object.entries(incomingMessage.headers)) {
         if (Array.isArray(value)) {
@@ -122,19 +123,19 @@ export async function nodeTargetFetch(input: string | URL, init: RequestInit = {
     })
 
     request.once('socket', (socket) => {
-      socketAssignedAt = Date.now()
+      socketAssignedAt = performance.now()
       socket.once('lookup', () => {
-        lookupEndedAt = Date.now()
+        lookupEndedAt = performance.now()
       })
       socket.once('connect', () => {
-        connectedAt = Date.now()
+        connectedAt = performance.now()
       })
       socket.once('secureConnect', () => {
-        secureConnectedAt = Date.now()
+        secureConnectedAt = performance.now()
       })
     })
     request.once('finish', () => {
-      requestFinishedAt = Date.now()
+      requestFinishedAt = performance.now()
     })
     request.once('error', reject)
     init.signal?.addEventListener('abort', () => {
