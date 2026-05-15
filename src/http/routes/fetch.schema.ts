@@ -55,6 +55,7 @@ const fetchRedirectSchema = {
     headers: { type: 'string' },
     redirect_url: { type: 'string' },
     status_code: { type: 'string' },
+    timings: fetchTimingsSchema,
   },
   required: ['elapsed', 'redirect_url', 'status_code'],
   type: 'object',

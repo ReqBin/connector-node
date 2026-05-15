@@ -1,0 +1,51 @@
+import type { ConnectorTimings, TargetFetchTimings } from './types.js'
+
+export interface TargetTimingSnapshot {
+  bodyEndedAt?: number
+  responseReceivedAt: number
+  startedAt: number
+  totalStartedAt?: number
+}
+
+export function createTargetTimings({
+  bodyEndedAt,
+  responseReceivedAt,
+  startedAt,
+  totalStartedAt = startedAt,
+}: TargetTimingSnapshot): TargetFetchTimings {
+  const endedAt = bodyEndedAt ?? responseReceivedAt
+
+  return {
+    connectingMs: 0,
+    dnsMs: 0,
+    receivingMs: endedAt - responseReceivedAt,
+    sendingMs: 0,
+    tlsMs: 0,
+    totalMs: endedAt - totalStartedAt,
+    waitingMs: responseReceivedAt - startedAt,
+  }
+}
+
+export function emptyTargetTimings(): TargetFetchTimings {
+  return {
+    connectingMs: 0,
+    dnsMs: 0,
+    receivingMs: 0,
+    sendingMs: 0,
+    tlsMs: 0,
+    totalMs: 0,
+    waitingMs: 0,
+  }
+}
+
+export function mapTargetTimingsToConnector(timings: TargetFetchTimings): ConnectorTimings {
+  return {
+    Connecting: timings.connectingMs / 1000,
+    DNS: timings.dnsMs / 1000,
+    Receiving: timings.receivingMs / 1000,
+    Sending: timings.sendingMs / 1000,
+    TLS: timings.tlsMs / 1000,
+    Total: timings.totalMs / 1000,
+    Waiting: timings.waitingMs / 1000,
+  }
+}
