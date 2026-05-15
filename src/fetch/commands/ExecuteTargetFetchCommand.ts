@@ -32,7 +32,8 @@ function getBodyByteLength(body: string | undefined): number {
 
 function resolveRedirectRequestUrlText(location: string, nextUrl: URL): string {
   try {
-    return new URL(location).href === nextUrl.href ? location : nextUrl.href
+    new URL(location)
+    return location
   } catch {
     return nextUrl.href
   }
