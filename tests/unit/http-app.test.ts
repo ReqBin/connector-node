@@ -373,7 +373,12 @@ describe('Fastify app factory', () => {
     })
 
     const response = await app.inject({
-      body: {},
+      body: {
+        json: JSON.stringify({
+          method: 'GET',
+          url: 'https://api.example.test',
+        }),
+      },
       headers: {
         authorization: 'Bearer paired-token',
       },
@@ -396,7 +401,12 @@ describe('Fastify app factory', () => {
     })
 
     const response = await app.inject({
-      body: {},
+      body: {
+        json: JSON.stringify({
+          method: 'GET',
+          url: 'https://api.example.test',
+        }),
+      },
       method: 'POST',
       url: '/v1/fetch',
     })
@@ -405,6 +415,88 @@ describe('Fastify app factory', () => {
     expect(response.json()).toEqual({
       error: 'not-implemented',
       message: 'Fetch execution is not implemented yet.',
+    })
+  })
+
+  it('rejects malformed fetch payloads after auth succeeds', async () => {
+    const pairingStore = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+      tokenGenerator: () => 'paired-token',
+    })
+    pairingStore.pair('123456')
+    app = await createApp({
+      pairingStore,
+    })
+
+    const response = await app.inject({
+      body: {
+        json: '{',
+      },
+      headers: {
+        authorization: 'Bearer paired-token',
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      error: 'malformed-json',
+      message: 'Request json payload is malformed.',
+    })
+  })
+
+  it('rejects fetch payloads without target URLs after auth succeeds', async () => {
+    const pairingStore = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+      tokenGenerator: () => 'paired-token',
+    })
+    pairingStore.pair('123456')
+    app = await createApp({
+      pairingStore,
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          method: 'GET',
+        }),
+      },
+      headers: {
+        authorization: 'Bearer paired-token',
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      error: 'missing-url',
+      message: 'Target URL is required.',
+    })
+  })
+
+  it('rejects fetch payloads with unsupported target schemes after auth succeeds', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          url: 'file:///etc/passwd',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      error: 'unsupported-scheme',
+      message: 'Target URL must use http or https.',
     })
   })
 
