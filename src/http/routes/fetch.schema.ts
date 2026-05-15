@@ -91,7 +91,7 @@ export const fetchSenderResponseSchema = {
     },
     RedirectsCount: { type: 'number' },
     RedirectsTime: { type: 'number' },
-    StatusCode: { type: 'number' },
+    StatusCode: { type: 'string' },
     StatusDescription: { type: 'string' },
     Success: { type: 'boolean' },
     Timings: fetchTimingsSchema,

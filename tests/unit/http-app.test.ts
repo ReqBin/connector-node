@@ -454,7 +454,7 @@ describe('Fastify app factory', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
-      StatusCode: 200,
+      StatusCode: '200',
       Success: true,
     })
   })
@@ -480,7 +480,7 @@ describe('Fastify app factory', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
-      StatusCode: 200,
+      StatusCode: '200',
       Success: true,
     })
   })
@@ -540,7 +540,7 @@ describe('Fastify app factory', () => {
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
       Content: 'Target request body exceeds the configured limit.',
-      StatusCode: 0,
+      StatusCode: '0',
       Success: false,
     })
   })
@@ -716,7 +716,7 @@ describe('Fastify app factory', () => {
       Content: 'target ok',
       ContentLength: 9,
       ContentType: 'text/plain',
-      StatusCode: 201,
+      StatusCode: '201',
       StatusDescription: 'Created',
       Success: true,
     })
@@ -743,7 +743,7 @@ describe('Fastify app factory', () => {
     expect(response.statusCode).toBe(200)
     expect(response.json()).toMatchObject({
       Content: 'Target request failed.',
-      StatusCode: 0,
+      StatusCode: '0',
       StatusDescription: 'Error',
       Success: false,
     })
