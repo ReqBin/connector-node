@@ -18,6 +18,10 @@ export interface ParsedFetchRequest {
   url: URL
 }
 
+export interface ExecutableFetchRequest extends ParsedFetchRequest {
+  headers: Record<string, string>
+}
+
 export type FetchPayloadErrorCode =
   | 'invalid-envelope'
   | 'invalid-method'
@@ -38,3 +42,31 @@ export interface FetchPayloadFailure {
 }
 
 export type FetchPayloadResult = FetchPayloadSuccess | FetchPayloadFailure
+
+export type TargetFetchErrorCode =
+  | 'network-error'
+  | 'request-body-too-large'
+  | 'response-body-too-large'
+  | 'timeout'
+
+export interface TargetFetchResponse {
+  body: Uint8Array
+  contentType: string
+  elapsedMs: number
+  headers: Record<string, string>
+  status: number
+  statusText: string
+}
+
+export interface TargetFetchSuccess {
+  ok: true
+  response: TargetFetchResponse
+}
+
+export interface TargetFetchFailure {
+  code: TargetFetchErrorCode
+  message: string
+  ok: false
+}
+
+export type TargetFetchResult = TargetFetchSuccess | TargetFetchFailure
