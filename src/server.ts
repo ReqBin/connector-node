@@ -33,30 +33,43 @@ export interface ServerStartupLog {
   event: 'reqbin.connector.started'
   fetchUrl: string
   healthUrl: string
+  host: string
+  openApiUrl: string
   pairingCode?: string
   pairingExpiresAt?: string
   versionUrl: string
 }
 
-function createStartupLog(port: number, authDisabled: boolean, pairingStore: PairingStore): ServerStartupLog {
-  const pairingCode = pairingStore.getPairingCode()
+function formatUrlHost(host: string): string {
+  if (host === '127.0.0.1') {
+    return 'localhost'
+  }
+
+  return host.includes(':') && !host.startsWith('[') ? `[${host}]` : host
+}
+
+function createStartupLog(host: string, port: number, authDisabled: boolean, pairingStore: PairingStore): ServerStartupLog {
+  const baseUrl = `http://${formatUrlHost(host)}:${port}`
+  const pairingCode = authDisabled ? undefined : pairingStore.getPairingCode()
   return {
     authDisabled,
     event: 'reqbin.connector.started',
-    fetchUrl: `http://localhost:${port}/v1/fetch`,
-    healthUrl: `http://localhost:${port}/health`,
-    ...(authDisabled
+    fetchUrl: `${baseUrl}/v1/fetch`,
+    healthUrl: `${baseUrl}/health`,
+    host,
+    openApiUrl: `${baseUrl}/openapi.json`,
+    ...(pairingCode === undefined
       ? {}
       : {
           pairingCode: pairingCode.code,
           pairingExpiresAt: new Date(pairingCode.expiresAt).toISOString(),
         }),
-    versionUrl: `http://localhost:${port}/version`,
+    versionUrl: `${baseUrl}/version`,
   }
 }
 
-function logStartup(port: number, authDisabled: boolean, pairingStore: PairingStore): void {
-  console.log(JSON.stringify(createStartupLog(port, authDisabled, pairingStore)))
+function logStartup(host: string, port: number, authDisabled: boolean, pairingStore: PairingStore): void {
+  console.log(JSON.stringify(createStartupLog(host, port, authDisabled, pairingStore)))
 }
 
 export async function startServer({
@@ -77,7 +90,7 @@ export async function startServer({
     port: listenPort,
   })
 
-  logStartup(getListeningPort(app, listenPort), appOptions.auth?.authDisabled === true, pairingStore)
+  logStartup(host, getListeningPort(app, listenPort), appOptions.auth?.authDisabled === true, pairingStore)
 
   return app
 }

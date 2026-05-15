@@ -74,6 +74,8 @@ describe('server startup', () => {
       authDisabled: false,
       pairingCode: '123456',
       pairingExpiresAt: '1970-01-01T00:05:01.000Z',
+      host: '127.0.0.1',
+      openApiUrl: 'http://localhost:9091/openapi.json',
       versionUrl: 'http://localhost:9091/version',
     })
   })
@@ -98,6 +100,61 @@ describe('server startup', () => {
     })
     expect(payload.pairingCode).toBeUndefined()
     expect(payload.pairingExpiresAt).toBeUndefined()
+  })
+
+  it('uses the configured host for listen options and startup URLs', async () => {
+    const listen = vi.fn(async (target: FastifyInstance) => {
+      vi.spyOn(target.server, 'address').mockReturnValue({
+        address: '0.0.0.0',
+        family: 'IPv4',
+        port: 8181,
+      })
+    })
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+    app = await startServer({
+      host: '0.0.0.0',
+      listen,
+      port: 8181,
+    })
+
+    const payload = getLoggedStartupPayload(log)
+
+    expect(listen).toHaveBeenCalledWith(app, {
+      host: '0.0.0.0',
+      port: 8181,
+    })
+    expect(payload).toMatchObject({
+      fetchUrl: 'http://0.0.0.0:8181/v1/fetch',
+      healthUrl: 'http://0.0.0.0:8181/health',
+      host: '0.0.0.0',
+      openApiUrl: 'http://0.0.0.0:8181/openapi.json',
+    })
+  })
+
+  it('formats IPv6 startup URLs with brackets', async () => {
+    const listen = vi.fn(async (target: FastifyInstance) => {
+      vi.spyOn(target.server, 'address').mockReturnValue({
+        address: '::1',
+        family: 'IPv6',
+        port: 8181,
+      })
+    })
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+
+    app = await startServer({
+      host: '::1',
+      listen,
+      port: 8181,
+    })
+
+    const payload = getLoggedStartupPayload(log)
+
+    expect(payload).toMatchObject({
+      fetchUrl: 'http://[::1]:8181/v1/fetch',
+      healthUrl: 'http://[::1]:8181/health',
+      openApiUrl: 'http://[::1]:8181/openapi.json',
+    })
   })
 
   it('resolves explicit ports before environment ports', () => {
