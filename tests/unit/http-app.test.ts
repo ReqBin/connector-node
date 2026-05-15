@@ -51,6 +51,91 @@ describe('Fastify app factory', () => {
     expect(response.headers['correlation-id']).toBe('reqbin-test-correlation')
   })
 
+  it('allows CORS requests from default ReqBin origins', async () => {
+    const testApp = await createTestApp()
+
+    const response = await testApp.inject({
+      headers: {
+        origin: 'https://reqbin.com',
+      },
+      method: 'GET',
+      url: '/health',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['access-control-allow-origin']).toBe('https://reqbin.com')
+    expect(response.headers['access-control-expose-headers']).toBe('correlation-id')
+  })
+
+  it('does not emit permissive CORS headers for denied origins', async () => {
+    const testApp = await createTestApp()
+
+    const response = await testApp.inject({
+      headers: {
+        origin: 'https://example.test',
+      },
+      method: 'GET',
+      url: '/health',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['access-control-allow-origin']).toBeUndefined()
+  })
+
+  it('does not emit CORS headers when origin is absent', async () => {
+    const testApp = await createTestApp()
+
+    const response = await testApp.inject({
+      method: 'GET',
+      url: '/health',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['access-control-allow-origin']).toBeUndefined()
+  })
+
+  it('allows configured development CORS origins', async () => {
+    app = await createApp({
+      cors: {
+        allowDevOrigins: true,
+      },
+    })
+
+    const response = await app.inject({
+      headers: {
+        'access-control-request-headers': 'authorization,content-type,correlation-id',
+        'access-control-request-method': 'POST',
+        origin: 'http://localhost:5173',
+      },
+      method: 'OPTIONS',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(204)
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:5173')
+    expect(response.headers['access-control-allow-headers']).toBe('authorization, content-type, correlation-id')
+    expect(response.headers['access-control-allow-methods']).toBe('GET, POST, OPTIONS')
+  })
+
+  it('extends CORS allowlist with explicit origins', async () => {
+    app = await createApp({
+      cors: {
+        allowedOrigins: ['http://localhost:8080'],
+      },
+    })
+
+    const response = await app.inject({
+      headers: {
+        origin: 'http://localhost:8080',
+      },
+      method: 'GET',
+      url: '/health',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:8080')
+  })
+
   it('returns default connector version metadata', async () => {
     const testApp = await createTestApp()
 
