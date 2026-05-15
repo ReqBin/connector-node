@@ -4,6 +4,12 @@ import { ExecuteTargetFetchCommand } from '../../fetch/commands/ExecuteTargetFet
 import { MapTargetFetchResultCommand } from '../../fetch/commands/MapTargetFetchResultCommand.js'
 import { ParseFetchPayloadCommand } from '../../fetch/commands/ParseFetchPayloadCommand.js'
 import type { ConnectorSenderResponse, FetchPayloadSuccess } from '../../fetch/types.js'
+import {
+  logTargetFailed,
+  logTargetFinished,
+  logTargetStarted,
+  writeRequestLog,
+} from '../../observability/request-logger.js'
 import { sanitizeForwardedHeaders, type HeaderPolicySuccess } from '../../security/header-policy.js'
 import { validateTargetUrlPolicy } from '../../security/target-policy.js'
 import { authorizeBearerToken } from '../../security/token-auth.js'
@@ -110,13 +116,31 @@ export async function executeFetchTargetStep(
   execute: FetchRouteExecute,
   context: FetchRouteChainContext,
 ): Promise<unknown> {
+  const parsed = getParsedPayload(context)
+  const sanitizedHeaders = getSanitizedHeaders(context)
+  const logger = context.route.logger ?? writeRequestLog
+  const startedAt = Date.now()
+  logTargetStarted(logger, context.request.id, parsed.request.method, parsed.request.url)
+
   const targetResult = await new ExecuteTargetFetchCommand({
     fetchImpl: context.route.targetFetch,
     ...context.route.targetFetchOptions,
   }).execute({
-    ...getParsedPayload(context).request,
-    headers: getSanitizedHeaders(context).headers,
+    ...parsed.request,
+    headers: sanitizedHeaders.headers,
   })
+  if (targetResult.ok) {
+    logTargetFinished(
+      logger,
+      context.request.id,
+      parsed.request.method,
+      parsed.request.url,
+      targetResult.response.status,
+      Date.now() - startedAt,
+    )
+  } else {
+    logTargetFailed(logger, context.request.id, parsed.request.method, parsed.request.url, Date.now() - startedAt)
+  }
 
   context.response = await new MapTargetFetchResultCommand().execute(targetResult)
   return execute(context)
