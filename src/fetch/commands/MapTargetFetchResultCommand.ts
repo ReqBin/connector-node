@@ -11,7 +11,11 @@ import { emptyTargetTimings, mapTargetTimingsToConnector } from '../target-timin
 const HTTP_VERSION = '1.1'
 const ERROR_CONTENT_TYPE = 'text/plain; charset=utf-8'
 
-function mapHeaders(headers: Record<string, string>): string {
+function mapHeaders(headers: Record<string, string>, headersText?: string): string {
+  if (headersText !== undefined) {
+    return headersText
+  }
+
   return Object.entries(headers)
     .map(([name, value]) => `${name}: ${value}\r\n`)
     .join('')
@@ -20,7 +24,7 @@ function mapHeaders(headers: Record<string, string>): string {
 function mapRedirect(redirect: TargetFetchRedirect): ConnectorRedirect {
   return {
     elapsed: redirect.elapsedMs,
-    headers: mapHeaders(redirect.headers),
+    headers: mapHeaders(redirect.headers, redirect.headersText),
     redirect_url: redirect.url,
     status_code: String(redirect.status),
     timings: mapTargetTimingsToConnector(redirect.timings),
@@ -97,7 +101,7 @@ export class MapTargetFetchResultCommand extends Command {
       ContentRaw: Buffer.from(response.body).toString('base64'),
       ContentType: response.contentType,
       Elapsed: response.elapsedMs,
-      Headers: mapHeaders(response.headers),
+      Headers: mapHeaders(response.headers, response.headersText),
       RedirectUrl: getRedirectUrl(redirects),
       Redirects: redirects,
       RedirectsCount: redirects.length,

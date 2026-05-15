@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events'
 import { Readable } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getNodeResponseTimings, nodeTargetFetch } from '../../src/fetch/node-target-fetch.js'
+import { getNodeResponseRawHeaders, getNodeResponseTimings, nodeTargetFetch } from '../../src/fetch/node-target-fetch.js'
 
 const mocks = vi.hoisted(() => ({
   httpRequest: vi.fn(),
@@ -27,6 +27,7 @@ interface MockResponseOptions {
   emitLookup?: boolean
   emitSocket?: boolean
   headers?: Record<string, string | string[] | undefined>
+  rawHeaders?: string[]
   secure?: boolean
   statusCode?: number
   statusMessage?: string
@@ -39,6 +40,7 @@ function createRequestMock({
   emitLookup = true,
   emitSocket = true,
   headers = {},
+  rawHeaders = [],
   secure = false,
   statusCode = 200,
   statusMessage = 'OK',
@@ -75,6 +77,7 @@ function createRequestMock({
         statusMessage: string
       }
       response.headers = headers
+      response.rawHeaders = rawHeaders
       response.statusCode = statusCode
       response.statusMessage = statusMessage
       callback(response)
@@ -112,6 +115,14 @@ describe('nodeTargetFetch', () => {
         'set-cookie': ['a=1', 'b=2'],
         'x-missing': undefined,
       },
+      rawHeaders: [
+        'Content-Type',
+        'text/plain',
+        'Set-Cookie',
+        'a=1',
+        'Set-Cookie',
+        'b=2',
+      ],
       statusCode: 201,
       statusMessage: 'Created',
     }))
@@ -133,6 +144,7 @@ describe('nodeTargetFetch', () => {
     expect(response.status).toBe(201)
     expect(response.statusText).toBe('Created')
     expect(response.headers.get('set-cookie')).toBe('a=1, b=2')
+    expect(getNodeResponseRawHeaders(response)).toBe('Content-Type: text/plain\r\nSet-Cookie: a=1\r\nSet-Cookie: b=2\r\n')
     await expect(response.text()).resolves.toBe('accepted')
     expect(getNodeResponseTimings(response)).toMatchObject({
       connectingMs: expect.any(Number),

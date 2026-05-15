@@ -54,6 +54,7 @@ export type TargetFetchErrorCode =
 export interface TargetFetchRedirect {
   elapsedMs: number
   headers: Record<string, string>
+  headersText?: string
   status: number
   timings: TargetFetchTimings
   url: string
@@ -74,6 +75,7 @@ export interface TargetFetchResponse {
   contentType: string
   elapsedMs: number
   headers: Record<string, string>
+  headersText?: string
   redirects?: TargetFetchRedirect[]
   redirectsTimeMs?: number
   status: number

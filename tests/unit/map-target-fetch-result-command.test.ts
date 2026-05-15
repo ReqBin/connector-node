@@ -21,6 +21,7 @@ describe('MapTargetFetchResultCommand', () => {
           'content-type': 'application/json; charset=utf-8',
           'x-target': 'ok',
         },
+        headersText: 'Content-Type: application/json; charset=utf-8\r\nX-Target: ok\r\n',
         status: 202,
         statusText: 'Accepted',
         timings: {
@@ -41,7 +42,7 @@ describe('MapTargetFetchResultCommand', () => {
       ContentRaw: 'eyJvayI6dHJ1ZX0=',
       ContentType: 'application/json; charset=utf-8',
       Elapsed: 42,
-      Headers: 'content-type: application/json; charset=utf-8\r\nx-target: ok\r\n',
+      Headers: 'Content-Type: application/json; charset=utf-8\r\nX-Target: ok\r\n',
       RedirectUrl: '',
       Redirects: [],
       RedirectsCount: 0,
@@ -76,6 +77,7 @@ describe('MapTargetFetchResultCommand', () => {
             headers: {
               location: '/next',
             },
+            headersText: 'Location: /next\r\n',
             status: 302,
             timings: {
               connectingMs: 0,
@@ -93,6 +95,7 @@ describe('MapTargetFetchResultCommand', () => {
             headers: {
               location: 'https://api.example.test/final',
             },
+            headersText: 'Location: https://api.example.test/final\r\n',
             status: 307,
             timings: {
               connectingMs: 0,
@@ -118,7 +121,7 @@ describe('MapTargetFetchResultCommand', () => {
       Redirects: [
         {
           elapsed: 25,
-          headers: 'location: /next\r\n',
+          headers: 'Location: /next\r\n',
           redirect_url: 'https://api.example.test/next',
           status_code: '302',
           timings: {
@@ -133,7 +136,7 @@ describe('MapTargetFetchResultCommand', () => {
         },
         {
           elapsed: 30,
-          headers: 'location: https://api.example.test/final\r\n',
+          headers: 'Location: https://api.example.test/final\r\n',
           redirect_url: 'https://api.example.test/final',
           status_code: '307',
           timings: {

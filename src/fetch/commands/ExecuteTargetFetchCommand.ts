@@ -9,7 +9,7 @@ import { getRedirectLocation, isRedirectStatus, shouldConvertRedirectToGet, stri
 import { collectHeaders, readResponseBody } from '../target-response.js'
 import { createTargetFetchFailure, isTargetFetchFailure } from '../target-fetch-failure.js'
 import { createTargetTimings } from '../target-timings.js'
-import { getNodeResponseTimings, nodeTargetFetch } from '../node-target-fetch.js'
+import { getNodeResponseRawHeaders, getNodeResponseTimings, nodeTargetFetch } from '../node-target-fetch.js'
 import {
   DEFAULT_MAX_REDIRECTS,
   DEFAULT_REQUEST_BODY_LIMIT_BYTES,
@@ -98,6 +98,7 @@ export class ExecuteTargetFetchCommand extends Command {
           redirects.push({
             elapsedMs: responseReceivedAt - hopStartedAt,
             headers: collectHeaders(response),
+            headersText: getNodeResponseRawHeaders(response),
             status: response.status,
             timings: createTargetTimings({
               phases,
@@ -133,6 +134,7 @@ export class ExecuteTargetFetchCommand extends Command {
             contentType: response.headers.get('content-type') || '',
             elapsedMs: bodyEndedAt - startedAt,
             headers: collectHeaders(response),
+            headersText: getNodeResponseRawHeaders(response),
             redirects,
             redirectsTimeMs,
             status: response.status,
