@@ -90,13 +90,13 @@ The legacy `POST /proxy` endpoint is not implemented.
 
 All routes accept `correlation-id`. If it is missing, the server generates one and returns it in the response header.
 
-Each request logs start/finish JSON events to stdout with `correlationId`, method, URL, status code, and elapsed time. Payloads and credentials are intentionally not logged.
+Each request logs start/finish JSON events to stdout with `correlationId`, method, URL, status code, and elapsed time. The fetch pipeline also logs target request start/finish/failure, validation failures, and stripped forwarded-header warnings. Payloads and credentials are intentionally not logged.
 
 ## Redirects And Timings
 
 Target redirects are followed manually with browser-like method/body behavior and a default limit of `10`. Each redirect entry includes its own elapsed time and timing object.
 
-Timing fields are returned in the existing ReqBin sender response shape. `Total`, `Waiting`, and final-body `Receiving` are measured with the available Node fetch surface. DNS, TCP connect, TLS, and sending phases are returned as `0` because standard Node `fetch` does not expose those phases reliably.
+Timing fields are returned in the existing ReqBin sender response shape. The default Node transport records DNS, TCP connect, TLS, sending, waiting, receiving, and total timings where the Node socket lifecycle exposes those phases. Cached/reused socket phases that are not emitted by Node are returned as `0` rather than guessed.
 
 ## OpenAPI
 
@@ -121,4 +121,5 @@ npm run lint
 npm run typecheck
 npm run test:coverage
 npm run build
+npm run openapi:check
 ```

@@ -31,7 +31,8 @@ current MVP implementation:
 - pairing uses a terminal-displayed six-digit code, short expiration,
   attempt limiting, and memory-only tokens;
 - request logs are written to stdout as JSON with `correlationId`, method, URL,
-  status code, and elapsed time; payloads and credentials are not logged;
+  status code, and elapsed time; target lifecycle, validation failure, and
+  stripped-header warning logs are emitted without payloads or credentials;
 - target request/response body limits default to `5MB`;
 - the Fastify incoming envelope limit allows the JSON wrapper around the `5MB`
   target body while the target body limit remains enforced by the fetch command;
@@ -40,13 +41,15 @@ current MVP implementation:
   remain out of scope for the MVP;
 - redirects are followed manually up to `10`, each redirect records its own
   elapsed/timing object, and the final response reports total elapsed time.
+- push/PR CI validates lint, typecheck, 100% coverage, build, and generated
+  OpenAPI freshness.
 
-Known timing limitation:
+Timing implementation note:
 
-- standard Node `fetch` does not reliably expose DNS, TCP connect, TLS, or send
-  phase timings. Those fields are returned as `0` rather than guessed. `Total`,
-  `Waiting`, redirect elapsed values, and final response receiving time are
-  measured with the available transport surface.
+- the default transport uses Node `http`/`https` socket lifecycle events to
+  collect DNS, TCP connect, TLS, sending, waiting, receiving, and total timing
+  data where those events are emitted. Cached/reused socket phases or otherwise
+  unavailable phases are returned as `0` rather than guessed.
 
 ## Product Context
 
