@@ -1,17 +1,38 @@
 import { useChain } from '@webquarx/design-patterns'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { ConnectorInfo } from './connector-info.js'
-import { healthResponseSchema, openApiResponseSchema, versionResponseSchema } from './schemas.js'
+import {
+  healthResponseSchema,
+  openApiResponseSchema,
+  pairErrorResponseSchema,
+  pairRequestSchema,
+  pairSuccessResponseSchema,
+  versionResponseSchema,
+} from './schemas.js'
+import type { PairingFailure, PairingStore } from '../security/pairing.js'
 
 interface RouteRegistrationContext {
   app: FastifyInstance
   connectorInfo: ConnectorInfo
+  pairingStore: PairingStore
 }
 
 type RouteRegistrationStep = (
   execute: (context: RouteRegistrationContext) => Promise<void>,
   context: RouteRegistrationContext,
 ) => Promise<void>
+
+interface PairRequestBody {
+  code: string
+}
+
+function getPairingFailureStatus(failure: PairingFailure): 401 | 429 {
+  if (failure.reason === 'attempt-limit') {
+    return 429
+  }
+
+  return 401
+}
 
 const registerHealthRoute: RouteRegistrationStep = async (execute, context) => {
   context.app.get('/health', {
@@ -21,6 +42,37 @@ const registerHealthRoute: RouteRegistrationStep = async (execute, context) => {
       },
     },
   }, async () => ({ status: 'up' }))
+
+  await execute(context)
+}
+
+const registerPairRoute: RouteRegistrationStep = async (execute, context) => {
+  context.app.post('/v1/pair', {
+    schema: {
+      body: pairRequestSchema,
+      response: {
+        200: pairSuccessResponseSchema,
+        401: pairErrorResponseSchema,
+        429: pairErrorResponseSchema,
+      },
+    },
+  }, async (request: FastifyRequest<{ Body: PairRequestBody }>, reply) => {
+    const result = context.pairingStore.pair(request.body.code)
+
+    if (!result.ok) {
+      return reply
+        .code(getPairingFailureStatus(result))
+        .send({
+          error: result.reason,
+          message: 'Pairing failed.',
+        })
+    }
+
+    return {
+      token: result.token,
+      tokenType: 'Bearer',
+    }
+  })
 
   await execute(context)
 }
@@ -53,6 +105,7 @@ export async function registerRoutes(context: RouteRegistrationContext): Promise
   await useChain([
     registerHealthRoute,
     registerVersionRoute,
+    registerPairRoute,
     registerOpenApiRoute,
   ]).execute(context)
 }

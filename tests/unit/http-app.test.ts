@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify'
 import { readFileSync } from 'node:fs'
 import { createApp } from '../../src/http/app.js'
 import { createConnectorInfo, createDefaultConnectorInfo, readConnectorPackageJson } from '../../src/http/connector-info.js'
+import { MemoryPairingStore } from '../../src/security/pairing.js'
 
 const packageJson = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
   name: string
@@ -189,6 +190,133 @@ describe('Fastify app factory', () => {
     expect(response.json()).toEqual(connectorInfo)
   })
 
+  it('pairs a valid terminal code without exposing the code', async () => {
+    const pairingStore = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+      tokenGenerator: () => 'paired-token',
+    })
+    app = await createApp({
+      pairingStore,
+    })
+
+    const pairResponse = await app.inject({
+      body: {
+        code: '123456',
+      },
+      method: 'POST',
+      url: '/v1/pair',
+    })
+    const getResponse = await app.inject({
+      method: 'GET',
+      url: '/v1/pair',
+    })
+
+    expect(pairResponse.statusCode).toBe(200)
+    expect(pairResponse.json()).toEqual({
+      token: 'paired-token',
+      tokenType: 'Bearer',
+    })
+    expect(pairingStore.hasToken('paired-token')).toBe(true)
+    expect(getResponse.statusCode).toBe(404)
+    expect(getResponse.body).not.toContain('123456')
+  })
+
+  it('rejects invalid pairing codes', async () => {
+    app = await createApp({
+      pairingStore: new MemoryPairingStore({
+        codeGenerator: () => '123456',
+      }),
+    })
+
+    const response = await app.inject({
+      body: {
+        code: '000000',
+      },
+      method: 'POST',
+      url: '/v1/pair',
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(response.json()).toEqual({
+      error: 'invalid-code',
+      message: 'Pairing failed.',
+    })
+  })
+
+  it('rejects expired pairing codes', async () => {
+    let now = 1000
+    app = await createApp({
+      pairingStore: new MemoryPairingStore({
+        codeGenerator: () => '123456',
+        now: () => now,
+        ttlMs: 10,
+      }),
+    })
+    now = 1010
+
+    const response = await app.inject({
+      body: {
+        code: '123456',
+      },
+      method: 'POST',
+      url: '/v1/pair',
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(response.json()).toEqual({
+      error: 'expired',
+      message: 'Pairing failed.',
+    })
+  })
+
+  it('rejects pairing after the attempt limit', async () => {
+    app = await createApp({
+      pairingStore: new MemoryPairingStore({
+        codeGenerator: () => '123456',
+        maxAttempts: 1,
+      }),
+    })
+
+    await app.inject({
+      body: {
+        code: '000000',
+      },
+      method: 'POST',
+      url: '/v1/pair',
+    })
+    const response = await app.inject({
+      body: {
+        code: '123456',
+      },
+      method: 'POST',
+      url: '/v1/pair',
+    })
+
+    expect(response.statusCode).toBe(429)
+    expect(response.json()).toEqual({
+      error: 'attempt-limit',
+      message: 'Pairing failed.',
+    })
+  })
+
+  it('rejects malformed pairing payloads before pairing', async () => {
+    app = await createApp({
+      pairingStore: new MemoryPairingStore({
+        codeGenerator: () => '123456',
+      }),
+    })
+
+    const response = await app.inject({
+      body: {
+        code: 'abc',
+      },
+      method: 'POST',
+      url: '/v1/pair',
+    })
+
+    expect(response.statusCode).toBe(400)
+  })
+
   it('builds connector metadata with defaults for invalid package fields', () => {
     expect(createConnectorInfo({
       name: '',
@@ -232,6 +360,7 @@ describe('Fastify app factory', () => {
       paths: {
         '/health': {},
         '/openapi.json': {},
+        '/v1/pair': {},
         '/version': {},
       },
     })
