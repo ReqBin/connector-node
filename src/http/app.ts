@@ -5,6 +5,7 @@ import { registerCors, type CorsOptions } from './cors.js'
 import { registerRoutes } from './routes.js'
 import { DEFAULT_CONNECTOR_INBOUND_BODY_LIMIT_BYTES } from '../config/limits.js'
 import type { FetchLike } from '../fetch/commands/ExecuteTargetFetchCommand.js'
+import type { TargetFetchOptions } from '../fetch/target-fetch-options.js'
 import { CORRELATION_ID_HEADER, createCorrelationId, registerCorrelationIdHook } from '../observability/correlation-id.js'
 import { registerRequestLoggingHooks, type ConnectorRequestLogger } from '../observability/request-logger.js'
 import { MemoryPairingStore, type PairingStore } from '../security/pairing.js'
@@ -17,6 +18,7 @@ export interface CreateAppOptions {
   pairingStore?: PairingStore
   requestLogger?: ConnectorRequestLogger
   targetFetch?: FetchLike
+  targetFetchOptions?: TargetFetchOptions
 }
 
 export async function createApp({
@@ -26,6 +28,7 @@ export async function createApp({
   pairingStore = new MemoryPairingStore(),
   requestLogger,
   targetFetch,
+  targetFetchOptions,
 }: CreateAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     bodyLimit: DEFAULT_CONNECTOR_INBOUND_BODY_LIMIT_BYTES,
@@ -55,6 +58,7 @@ export async function createApp({
     connectorInfo,
     pairingStore,
     targetFetch,
+    targetFetchOptions,
   })
 
   return app

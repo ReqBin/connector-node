@@ -486,6 +486,37 @@ describe('Fastify app factory', () => {
     }))
   })
 
+  it('passes configured target fetch limits into the fetch pipeline', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+      targetFetchOptions: {
+        requestBodyLimitBytes: 3,
+      },
+    })
+
+    const response = await app.inject({
+      body: {
+        json: JSON.stringify({
+          content: '1234',
+          contentType: 'CUSTOM',
+          method: 'POST',
+          url: 'https://api.example.test',
+        }),
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toMatchObject({
+      Content: 'Target request body exceeds the configured limit.',
+      StatusCode: 0,
+      Success: false,
+    })
+  })
+
   it('rejects malformed fetch payloads after auth succeeds', async () => {
     const pairingStore = new MemoryPairingStore({
       codeGenerator: () => '123456',

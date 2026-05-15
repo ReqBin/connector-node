@@ -4,6 +4,7 @@ import type {
   TargetFetchRedirect,
   TargetFetchResult,
 } from '../types.js'
+import type { TargetFetchOptions } from '../target-fetch-options.js'
 import { getRedirectLocation, isRedirectStatus, shouldConvertRedirectToGet, stripBodyHeaders } from '../redirect-policy.js'
 import { collectHeaders, readResponseBody } from '../target-response.js'
 import { createTargetFetchFailure, isTargetFetchFailure } from '../target-fetch-failure.js'
@@ -18,13 +19,9 @@ import { validateTargetUrlPolicy } from '../../security/target-policy.js'
 
 export type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>
 
-interface ExecuteTargetFetchCommandOptions {
+interface ExecuteTargetFetchCommandOptions extends TargetFetchOptions {
   fetchImpl?: FetchLike
-  maxRedirects?: number
   now?: () => number
-  requestBodyLimitBytes?: number
-  responseBodyLimitBytes?: number
-  timeoutMs?: number
 }
 
 function getBodyByteLength(body: string | undefined): number {
