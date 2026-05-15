@@ -4,13 +4,19 @@ import { createDefaultConnectorInfo, type ConnectorInfo } from './connector-info
 import { registerCors, type CorsOptions } from './cors.js'
 import { registerRoutes } from './routes.js'
 import { CORRELATION_ID_HEADER, createCorrelationId, registerCorrelationIdHook } from '../observability/correlation-id.js'
+import { MemoryPairingStore, type PairingStore } from '../security/pairing.js'
 
 export interface CreateAppOptions {
   connectorInfo?: ConnectorInfo
   cors?: CorsOptions
+  pairingStore?: PairingStore
 }
 
-export async function createApp({ connectorInfo = createDefaultConnectorInfo(), cors }: CreateAppOptions = {}): Promise<FastifyInstance> {
+export async function createApp({
+  connectorInfo = createDefaultConnectorInfo(),
+  cors,
+  pairingStore = new MemoryPairingStore(),
+}: CreateAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     genReqId: createCorrelationId,
     logger: false,
@@ -33,6 +39,7 @@ export async function createApp({ connectorInfo = createDefaultConnectorInfo(), 
   await registerRoutes({
     app,
     connectorInfo,
+    pairingStore,
   })
   registerCorrelationIdHook(app)
 
