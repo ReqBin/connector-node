@@ -317,6 +317,97 @@ describe('Fastify app factory', () => {
     expect(response.statusCode).toBe(400)
   })
 
+  it('rejects fetch requests without a bearer token by default', async () => {
+    const pairingStore = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+    })
+    app = await createApp({
+      pairingStore,
+    })
+
+    const response = await app.inject({
+      body: {},
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(response.json()).toEqual({
+      error: 'missing-token',
+      message: 'Authentication failed.',
+    })
+  })
+
+  it('rejects fetch requests with an invalid bearer token', async () => {
+    const pairingStore = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+    })
+    app = await createApp({
+      pairingStore,
+    })
+
+    const response = await app.inject({
+      body: {},
+      headers: {
+        authorization: 'Bearer invalid-token',
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(401)
+    expect(response.json()).toEqual({
+      error: 'invalid-token',
+      message: 'Authentication failed.',
+    })
+  })
+
+  it('allows fetch route access with a paired bearer token', async () => {
+    const pairingStore = new MemoryPairingStore({
+      codeGenerator: () => '123456',
+      tokenGenerator: () => 'paired-token',
+    })
+    pairingStore.pair('123456')
+    app = await createApp({
+      pairingStore,
+    })
+
+    const response = await app.inject({
+      body: {},
+      headers: {
+        authorization: 'Bearer paired-token',
+      },
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(501)
+    expect(response.json()).toEqual({
+      error: 'not-implemented',
+      message: 'Fetch execution is not implemented yet.',
+    })
+  })
+
+  it('allows fetch route access when auth is explicitly disabled', async () => {
+    app = await createApp({
+      auth: {
+        authDisabled: true,
+      },
+    })
+
+    const response = await app.inject({
+      body: {},
+      method: 'POST',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(501)
+    expect(response.json()).toEqual({
+      error: 'not-implemented',
+      message: 'Fetch execution is not implemented yet.',
+    })
+  })
+
   it('builds connector metadata with defaults for invalid package fields', () => {
     expect(createConnectorInfo({
       name: '',
@@ -360,6 +451,7 @@ describe('Fastify app factory', () => {
       paths: {
         '/health': {},
         '/openapi.json': {},
+        '/v1/fetch': {},
         '/v1/pair': {},
         '/version': {},
       },
