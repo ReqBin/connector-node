@@ -4,6 +4,7 @@ import { Readable } from 'node:stream'
 import type { TargetFetchTimings } from './types.js'
 
 const responseTimings = new WeakMap<Response, Partial<TargetFetchTimings>>()
+const responseRawHeaders = new WeakMap<Response, string>()
 
 function getHeaders(initHeaders: HeadersInit | undefined): Record<string, string> {
   const headers: Record<string, string> = {}
@@ -55,6 +56,23 @@ export function getNodeResponseTimings(response: Response): Partial<TargetFetchT
   return responseTimings.get(response)
 }
 
+export function getNodeResponseRawHeaders(response: Response): string | undefined {
+  return responseRawHeaders.get(response)
+}
+
+function mapRawHeaders(rawHeaders: string[]): string {
+  let headersText = ''
+  for (let index = 0; index < rawHeaders.length; index += 2) {
+    const name = rawHeaders[index]
+    const value = rawHeaders[index + 1]
+    if (name !== undefined && value !== undefined) {
+      headersText += `${name}: ${value}\r\n`
+    }
+  }
+
+  return headersText
+}
+
 export async function nodeTargetFetch(input: string | URL, init: RequestInit = {}): Promise<Response> {
   const url = input instanceof URL ? input : new URL(input)
   const transport = url.protocol === 'https:' ? https : http
@@ -99,6 +117,7 @@ export async function nodeTargetFetch(input: string | URL, init: RequestInit = {
         requestFinishedAt,
         responseReceivedAt,
       ))
+      responseRawHeaders.set(response, mapRawHeaders(incomingMessage.rawHeaders))
       resolve(response)
     })
 
