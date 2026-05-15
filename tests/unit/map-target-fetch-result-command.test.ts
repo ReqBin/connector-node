@@ -47,7 +47,7 @@ describe('MapTargetFetchResultCommand', () => {
       Redirects: [],
       RedirectsCount: 0,
       RedirectsTime: 0,
-      StatusCode: 202,
+      StatusCode: '202',
       StatusDescription: 'Accepted',
       Success: true,
       Timings: {
@@ -179,7 +179,7 @@ describe('MapTargetFetchResultCommand', () => {
       ContentRaw: 'AAECAw==',
       ContentType: 'image/png',
       Headers: '',
-      StatusCode: 200,
+      StatusCode: '200',
       StatusDescription: 'OK',
       Success: true,
     })
@@ -204,7 +204,7 @@ describe('MapTargetFetchResultCommand', () => {
       ContentLength: 0,
       ContentRaw: '',
       ContentType: '',
-      StatusCode: 404,
+      StatusCode: '404',
       StatusDescription: 'Not Found',
       Success: true,
     })
@@ -225,7 +225,7 @@ describe('MapTargetFetchResultCommand', () => {
     }
 
     await expect(command.execute(result)).resolves.toMatchObject({
-      StatusCode: 599,
+      StatusCode: '599',
       StatusDescription: '',
       Success: true,
     })
@@ -249,7 +249,7 @@ describe('MapTargetFetchResultCommand', () => {
       Redirects: [],
       RedirectsCount: 0,
       RedirectsTime: 0,
-      StatusCode: 0,
+      StatusCode: '0',
       StatusDescription: 'Error',
       Success: false,
       Timings: {

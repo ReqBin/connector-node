@@ -127,7 +127,7 @@ export interface ConnectorSenderResponse {
   Redirects: ConnectorRedirect[]
   RedirectsCount: number
   RedirectsTime: number
-  StatusCode: number
+  StatusCode: string
   StatusDescription: string
   Success: boolean
   Timings: ConnectorTimings
