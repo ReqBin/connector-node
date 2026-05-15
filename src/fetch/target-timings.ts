@@ -5,7 +5,6 @@ export interface TargetTimingSnapshot {
   phases?: Partial<TargetFetchTimings>
   responseReceivedAt: number
   startedAt: number
-  totalStartedAt?: number
 }
 
 export function createTargetTimings({
@@ -13,7 +12,6 @@ export function createTargetTimings({
   phases = {},
   responseReceivedAt,
   startedAt,
-  totalStartedAt = startedAt,
 }: TargetTimingSnapshot): TargetFetchTimings {
   const endedAt = bodyEndedAt ?? responseReceivedAt
 
@@ -23,7 +21,7 @@ export function createTargetTimings({
     receivingMs: endedAt - responseReceivedAt,
     sendingMs: phases.sendingMs ?? 0,
     tlsMs: phases.tlsMs ?? 0,
-    totalMs: endedAt - totalStartedAt,
+    totalMs: endedAt - startedAt,
     waitingMs: phases.waitingMs ?? responseReceivedAt - startedAt,
   }
 }

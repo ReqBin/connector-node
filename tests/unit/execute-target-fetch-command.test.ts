@@ -142,7 +142,7 @@ describe('ExecuteTargetFetchCommand', () => {
     expect(result).toMatchObject({
       ok: true,
       response: {
-        elapsedMs: 100,
+        elapsedMs: 70,
         redirects: [{
           elapsedMs: 25,
           headers: {
@@ -169,7 +169,7 @@ describe('ExecuteTargetFetchCommand', () => {
           receivingMs: 20,
           sendingMs: 0,
           tlsMs: 0,
-          totalMs: 100,
+          totalMs: 70,
           waitingMs: 50,
         },
       },

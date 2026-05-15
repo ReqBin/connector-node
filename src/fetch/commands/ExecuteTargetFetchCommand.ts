@@ -144,7 +144,7 @@ export class ExecuteTargetFetchCommand extends Command {
           response: {
             body: responseBody,
             contentType: response.headers.get('content-type') || '',
-            elapsedMs: bodyEndedAt - startedAt,
+            elapsedMs: bodyEndedAt - hopStartedAt,
             headers: collectHeaders(response),
             headersText: getNodeResponseRawHeaders(response),
             redirects,
@@ -156,7 +156,6 @@ export class ExecuteTargetFetchCommand extends Command {
               phases,
               responseReceivedAt,
               startedAt: hopStartedAt,
-              totalStartedAt: startedAt,
             }),
           },
         }
