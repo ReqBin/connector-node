@@ -38,13 +38,15 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "prestart": "npm run build",
     "start": "node dist/bin/reqbin-agent.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "prepublishOnly": "npm run test:coverage && npm run build"
+    "prepublishOnly": "npm run lint && npm run test:coverage && npm run build"
   },
   "repository": {
     "type": "git",
