@@ -149,6 +149,7 @@ describe('ExecuteTargetFetchCommand', () => {
             location: '/next',
             'x-hop': 'first',
           },
+          method: 'POST',
           status: 302,
           timings: {
             connectingMs: 0,
@@ -159,7 +160,7 @@ describe('ExecuteTargetFetchCommand', () => {
             totalMs: 25,
             waitingMs: 25,
           },
-          url: 'https://api.example.test/next',
+          url: 'https://api.example.test/resource',
         }],
         redirectsTimeMs: 25,
         timings: {

@@ -25,14 +25,11 @@ function mapRedirect(redirect: TargetFetchRedirect): ConnectorRedirect {
   return {
     elapsed: redirect.elapsedMs,
     headers: mapHeaders(redirect.headers, redirect.headersText),
+    method: redirect.method,
     redirect_url: redirect.url,
     status_code: String(redirect.status),
     timings: mapTargetTimingsToConnector(redirect.timings),
   }
-}
-
-function getRedirectUrl(redirects: ConnectorRedirect[]): string {
-  return redirects[redirects.length - 1]?.redirect_url ?? ''
 }
 
 function getStatusDescription(status: number, statusText: string): string {
@@ -102,7 +99,7 @@ export class MapTargetFetchResultCommand extends Command {
       ContentType: response.contentType,
       Elapsed: response.elapsedMs,
       Headers: mapHeaders(response.headers, response.headersText),
-      RedirectUrl: getRedirectUrl(redirects),
+      RedirectUrl: '',
       Redirects: redirects,
       RedirectsCount: redirects.length,
       RedirectsTime: response.redirectsTimeMs ?? 0,

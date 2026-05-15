@@ -66,11 +66,12 @@ const fetchRedirectSchema = {
   properties: {
     elapsed: { type: 'number' },
     headers: { type: 'string' },
+    method: { type: 'string' },
     redirect_url: { type: 'string' },
     status_code: { type: 'string' },
     timings: fetchTimingsSchema,
   },
-  required: ['elapsed', 'redirect_url', 'status_code'],
+  required: ['elapsed', 'method', 'redirect_url', 'status_code'],
   type: 'object',
 } as const
 

@@ -78,6 +78,7 @@ describe('MapTargetFetchResultCommand', () => {
               location: '/next',
             },
             headersText: 'Location: /next\r\n',
+            method: 'POST',
             status: 302,
             timings: {
               connectingMs: 0,
@@ -88,7 +89,7 @@ describe('MapTargetFetchResultCommand', () => {
               totalMs: 25,
               waitingMs: 24,
             },
-            url: 'https://api.example.test/next',
+            url: 'https://api.example.test/start',
           },
           {
             elapsedMs: 30,
@@ -96,6 +97,7 @@ describe('MapTargetFetchResultCommand', () => {
               location: 'https://api.example.test/final',
             },
             headersText: 'Location: https://api.example.test/final\r\n',
+            method: 'GET',
             status: 307,
             timings: {
               connectingMs: 0,
@@ -106,7 +108,7 @@ describe('MapTargetFetchResultCommand', () => {
               totalMs: 30,
               waitingMs: 28,
             },
-            url: 'https://api.example.test/final',
+            url: 'https://api.example.test/next',
           },
         ],
         redirectsTimeMs: 55,
@@ -117,12 +119,13 @@ describe('MapTargetFetchResultCommand', () => {
     }
 
     await expect(command.execute(result)).resolves.toMatchObject({
-      RedirectUrl: 'https://api.example.test/final',
+      RedirectUrl: '',
       Redirects: [
         {
           elapsed: 25,
           headers: 'Location: /next\r\n',
-          redirect_url: 'https://api.example.test/next',
+          method: 'POST',
+          redirect_url: 'https://api.example.test/start',
           status_code: '302',
           timings: {
             Connecting: 0,
@@ -137,7 +140,8 @@ describe('MapTargetFetchResultCommand', () => {
         {
           elapsed: 30,
           headers: 'Location: https://api.example.test/final\r\n',
-          redirect_url: 'https://api.example.test/final',
+          method: 'GET',
+          redirect_url: 'https://api.example.test/next',
           status_code: '307',
           timings: {
             Connecting: 0,
