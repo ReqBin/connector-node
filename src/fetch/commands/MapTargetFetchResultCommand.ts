@@ -1,6 +1,12 @@
 import { Command } from '@webquarx/design-patterns'
 import { STATUS_CODES } from 'node:http'
-import type { ConnectorSenderResponse, ConnectorTimings, TargetFetchResult } from '../types.js'
+import type {
+  ConnectorRedirect,
+  ConnectorSenderResponse,
+  ConnectorTimings,
+  TargetFetchRedirect,
+  TargetFetchResult,
+} from '../types.js'
 
 const HTTP_VERSION = '1.1'
 const ERROR_CONTENT_TYPE = 'text/plain; charset=utf-8'
@@ -21,6 +27,19 @@ function mapHeaders(headers: Record<string, string>): string {
   return Object.entries(headers)
     .map(([name, value]) => `${name}: ${value}\r\n`)
     .join('')
+}
+
+function mapRedirect(redirect: TargetFetchRedirect): ConnectorRedirect {
+  return {
+    elapsed: redirect.elapsedMs,
+    headers: mapHeaders(redirect.headers),
+    redirect_url: redirect.url,
+    status_code: String(redirect.status),
+  }
+}
+
+function getRedirectUrl(redirects: ConnectorRedirect[]): string {
+  return redirects[redirects.length - 1]?.redirect_url ?? ''
 }
 
 function getStatusDescription(status: number, statusText: string): string {
@@ -81,6 +100,7 @@ export class MapTargetFetchResultCommand extends Command {
     }
 
     const { response } = result
+    const redirects = (response.redirects ?? []).map(mapRedirect)
 
     return createBaseResponse({
       Content: decodeTextBody(response.body, response.contentType),
@@ -89,6 +109,10 @@ export class MapTargetFetchResultCommand extends Command {
       ContentType: response.contentType,
       Elapsed: response.elapsedMs,
       Headers: mapHeaders(response.headers),
+      RedirectUrl: getRedirectUrl(redirects),
+      Redirects: redirects,
+      RedirectsCount: redirects.length,
+      RedirectsTime: response.redirectsTimeMs ?? 0,
       StatusCode: response.status,
       StatusDescription: getStatusDescription(response.status, response.statusText),
       Success: true,

@@ -52,6 +52,59 @@ describe('MapTargetFetchResultCommand', () => {
     })
   })
 
+  it('maps target redirect data to sender response redirect fields', async () => {
+    const result: TargetFetchResult = {
+      ok: true,
+      response: {
+        body: encode('done'),
+        contentType: 'text/plain',
+        elapsedMs: 150,
+        headers: {},
+        redirects: [
+          {
+            elapsedMs: 25,
+            headers: {
+              location: '/next',
+            },
+            status: 302,
+            url: 'https://api.example.test/next',
+          },
+          {
+            elapsedMs: 30,
+            headers: {
+              location: 'https://api.example.test/final',
+            },
+            status: 307,
+            url: 'https://api.example.test/final',
+          },
+        ],
+        redirectsTimeMs: 55,
+        status: 200,
+        statusText: 'OK',
+      },
+    }
+
+    await expect(command.execute(result)).resolves.toMatchObject({
+      RedirectUrl: 'https://api.example.test/final',
+      Redirects: [
+        {
+          elapsed: 25,
+          headers: 'location: /next\r\n',
+          redirect_url: 'https://api.example.test/next',
+          status_code: '302',
+        },
+        {
+          elapsed: 30,
+          headers: 'location: https://api.example.test/final\r\n',
+          redirect_url: 'https://api.example.test/final',
+          status_code: '307',
+        },
+      ],
+      RedirectsCount: 2,
+      RedirectsTime: 55,
+    })
+  })
+
   it('maps binary target responses without forcing text content', async () => {
     const result: TargetFetchResult = {
       ok: true,
