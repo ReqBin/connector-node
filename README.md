@@ -98,6 +98,8 @@ Target redirects are followed manually with browser-like method/body behavior an
 
 Timing fields are returned in the existing ReqBin sender response shape. The default Node transport records DNS, TCP connect, TLS, sending, waiting, receiving, and total timings where the Node socket lifecycle exposes those phases. Cached/reused socket phases that are not emitted by Node are returned as `0` rather than guessed.
 
+The exact `/v1/fetch` response contract is documented in [docs/fetch-sender-response-contract.md](docs/fetch-sender-response-contract.md).
+
 ## OpenAPI
 
 The generated spec is available at runtime:

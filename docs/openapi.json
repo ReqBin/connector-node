@@ -295,6 +295,9 @@
                           "headers": {
                             "type": "string"
                           },
+                          "method": {
+                            "type": "string"
+                          },
                           "redirect_url": {
                             "type": "string"
                           },
@@ -340,6 +343,7 @@
                         },
                         "required": [
                           "elapsed",
+                          "method",
                           "redirect_url",
                           "status_code"
                         ],
@@ -354,7 +358,7 @@
                       "type": "number"
                     },
                     "StatusCode": {
-                      "type": "number"
+                      "type": "string"
                     },
                     "StatusDescription": {
                       "type": "string"
