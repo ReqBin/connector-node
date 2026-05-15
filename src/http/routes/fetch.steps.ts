@@ -19,6 +19,22 @@ export interface FetchRouteChainContext {
 
 type FetchRouteExecute = (context: FetchRouteChainContext) => Promise<unknown>
 
+function getParsedPayload(context: FetchRouteChainContext): FetchPayloadSuccess {
+  if (context.parsed === undefined) {
+    throw new Error('Fetch route payload must be parsed before this step.')
+  }
+
+  return context.parsed
+}
+
+function getSanitizedHeaders(context: FetchRouteChainContext): HeaderPolicySuccess {
+  if (context.headers === undefined) {
+    throw new Error('Fetch route headers must be sanitized before this step.')
+  }
+
+  return context.headers
+}
+
 export async function authorizeFetchRouteStep(
   execute: FetchRouteExecute,
   context: FetchRouteChainContext,
@@ -59,7 +75,7 @@ export async function validateFetchTargetStep(
   execute: FetchRouteExecute,
   context: FetchRouteChainContext,
 ): Promise<unknown> {
-  const targetPolicy = validateTargetUrlPolicy(context.parsed!.request.url)
+  const targetPolicy = validateTargetUrlPolicy(getParsedPayload(context).request.url)
   if (!targetPolicy.ok) {
     return context.reply
       .code(400)
@@ -76,7 +92,7 @@ export async function sanitizeFetchHeadersStep(
   execute: FetchRouteExecute,
   context: FetchRouteChainContext,
 ): Promise<unknown> {
-  const headerPolicy = sanitizeForwardedHeaders(context.parsed!.request.headersText)
+  const headerPolicy = sanitizeForwardedHeaders(getParsedPayload(context).request.headersText)
   if (!headerPolicy.ok) {
     return context.reply
       .code(400)
@@ -97,8 +113,8 @@ export async function executeFetchTargetStep(
   const targetResult = await new ExecuteTargetFetchCommand({
     fetchImpl: context.route.targetFetch,
   }).execute({
-    ...context.parsed!.request,
-    headers: context.headers!.headers,
+    ...getParsedPayload(context).request,
+    headers: getSanitizedHeaders(context).headers,
   })
 
   context.response = await new MapTargetFetchResultCommand().execute(targetResult)
