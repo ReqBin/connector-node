@@ -1,10 +1,12 @@
 import { Command } from '@webquarx/design-patterns'
 import type {
   ExecutableFetchRequest,
-  TargetFetchFailure,
   TargetFetchRedirect,
   TargetFetchResult,
 } from '../types.js'
+import { getRedirectLocation, isRedirectStatus, shouldConvertRedirectToGet, stripBodyHeaders } from '../redirect-policy.js'
+import { collectHeaders, readResponseBody } from '../target-response.js'
+import { createTargetFetchFailure, isTargetFetchFailure } from '../target-fetch-failure.js'
 import { validateTargetUrlPolicy } from '../../security/target-policy.js'
 
 export const DEFAULT_TARGET_REQUEST_TIMEOUT_MS = 300_000
@@ -23,85 +25,8 @@ interface ExecuteTargetFetchCommandOptions {
   timeoutMs?: number
 }
 
-function failure(code: TargetFetchFailure['code'], message: string): TargetFetchFailure {
-  return {
-    code,
-    message,
-    ok: false,
-  }
-}
-
-function isFailure(value: Uint8Array | TargetFetchFailure): value is TargetFetchFailure {
-  return 'ok' in value && value.ok === false
-}
-
 function getBodyByteLength(body: string | undefined): number {
   return body === undefined ? 0 : Buffer.byteLength(body, 'utf8')
-}
-
-async function readResponseBody(response: Response, limitBytes: number): Promise<Uint8Array | TargetFetchFailure> {
-  if (response.body === null) {
-    return new Uint8Array()
-  }
-
-  const reader = response.body.getReader()
-  const chunks: Uint8Array[] = []
-  let totalBytes = 0
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) {
-      break
-    }
-
-    totalBytes += value.byteLength
-    if (totalBytes > limitBytes) {
-      await reader.cancel()
-      return failure('response-body-too-large', 'Target response body exceeds the configured limit.')
-    }
-
-    chunks.push(value)
-  }
-
-  const body = new Uint8Array(totalBytes)
-  let offset = 0
-  for (const chunk of chunks) {
-    body.set(chunk, offset)
-    offset += chunk.byteLength
-  }
-
-  return body
-}
-
-function collectHeaders(response: Response): Record<string, string> {
-  const headers: Record<string, string> = {}
-
-  response.headers.forEach((value, name) => {
-    headers[name] = value
-  })
-
-  return headers
-}
-
-function getRedirectLocation(response: Response): string | undefined {
-  const location = response.headers.get('location')
-  return location === null || location.trim().length === 0 ? undefined : location
-}
-
-function isRedirectStatus(status: number): boolean {
-  return status === 301 || status === 302 || status === 303 || status === 307 || status === 308
-}
-
-function shouldConvertRedirectToGet(status: number, method: string): boolean {
-  return (status === 303 && method !== 'GET' && method !== 'HEAD')
-    || ((status === 301 || status === 302) && method === 'POST')
-}
-
-function stripBodyHeaders(headers: Record<string, string>): Record<string, string> {
-  return Object.fromEntries(Object.entries(headers).filter(([name]) => {
-    const normalizedName = name.toLowerCase()
-    return normalizedName !== 'content-length' && normalizedName !== 'content-type'
-  }))
 }
 
 export class ExecuteTargetFetchCommand extends Command {
@@ -131,7 +56,7 @@ export class ExecuteTargetFetchCommand extends Command {
 
   async execute(request: ExecutableFetchRequest): Promise<TargetFetchResult> {
     if (getBodyByteLength(request.body) > this.requestBodyLimitBytes) {
-      return failure('request-body-too-large', 'Target request body exceeds the configured limit.')
+      return createTargetFetchFailure('request-body-too-large', 'Target request body exceeds the configured limit.')
     }
 
     const controller = new AbortController()
@@ -159,14 +84,14 @@ export class ExecuteTargetFetchCommand extends Command {
         if (isRedirectStatus(response.status) && redirectLocation !== undefined) {
           if (redirects.length >= this.maxRedirects) {
             clearTimeout(timeout)
-            return failure('too-many-redirects', 'Target redirect chain exceeds the configured limit.')
+            return createTargetFetchFailure('too-many-redirects', 'Target redirect chain exceeds the configured limit.')
           }
 
           const nextUrl = new URL(redirectLocation, url)
           const targetPolicy = validateTargetUrlPolicy(nextUrl)
           if (!targetPolicy.ok) {
             clearTimeout(timeout)
-            return failure('blocked-redirect', 'Redirect target host is blocked by connector policy.')
+            return createTargetFetchFailure('blocked-redirect', 'Redirect target host is blocked by connector policy.')
           }
 
           redirects.push({
@@ -188,7 +113,7 @@ export class ExecuteTargetFetchCommand extends Command {
         }
 
         const responseBody = await readResponseBody(response, this.responseBodyLimitBytes)
-        if (isFailure(responseBody)) {
+        if (isTargetFetchFailure(responseBody)) {
           clearTimeout(timeout)
           return responseBody
         }
@@ -213,10 +138,10 @@ export class ExecuteTargetFetchCommand extends Command {
     } catch {
       clearTimeout(timeout)
       if (controller.signal.aborted) {
-        return failure('timeout', 'Target request timed out.')
+        return createTargetFetchFailure('timeout', 'Target request timed out.')
       }
 
-      return failure('network-error', 'Target request failed.')
+      return createTargetFetchFailure('network-error', 'Target request failed.')
     }
   }
 }
