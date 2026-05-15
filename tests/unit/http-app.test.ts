@@ -82,6 +82,24 @@ describe('Fastify app factory', () => {
     expect(response.headers['access-control-allow-origin']).toBeUndefined()
   })
 
+  it('does not emit permissive CORS headers for denied preflight requests', async () => {
+    const testApp = await createTestApp()
+
+    const response = await testApp.inject({
+      headers: {
+        'access-control-request-headers': 'authorization,content-type,correlation-id',
+        'access-control-request-method': 'POST',
+        origin: 'https://example.test',
+      },
+      method: 'OPTIONS',
+      url: '/v1/fetch',
+    })
+
+    expect(response.statusCode).toBe(404)
+    expect(response.headers['access-control-allow-origin']).toBeUndefined()
+    expect(response.headers['access-control-allow-headers']).toBeUndefined()
+  })
+
   it('does not emit CORS headers when origin is absent', async () => {
     const testApp = await createTestApp()
 
