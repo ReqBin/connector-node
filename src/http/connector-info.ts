@@ -24,16 +24,13 @@ export function readConnectorPackageJson(
   for (const relativePath of relativePaths) {
     try {
       return JSON.parse(readFileSync(fileURLToPath(new URL(relativePath, baseUrl)), 'utf8')) as ConnectorPackageJson
-      /* v8 ignore next 3 -- compiled dist and source tests resolve package.json from different relative paths. */
     } catch {
       continue
     }
   }
 
-  /* v8 ignore start -- package metadata is required in both source and published package layouts. */
   throw new Error('Unable to read connector package metadata.')
 }
-/* v8 ignore stop */
 
 function readString(value: unknown, fallback: string): string {
   if (typeof value === 'string' && value.length > 0) {
