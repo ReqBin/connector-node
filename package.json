@@ -47,6 +47,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "openapi:export": "npm run build && node dist/bin/export-openapi.js",
+    "openapi:check": "npm run build && node dist/bin/check-openapi.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "prepublishOnly": "npm run lint && npm run test:coverage && npm run build"
   },

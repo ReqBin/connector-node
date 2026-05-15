@@ -36,3 +36,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: OpenAPI freshness
+        run: npm run openapi:check
