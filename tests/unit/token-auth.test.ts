@@ -5,6 +5,7 @@ import { authorizeBearerToken, parseBearerToken } from '../../src/security/token
 describe('token auth', () => {
   it('parses bearer tokens', () => {
     expect(parseBearerToken('Bearer token-1')).toBe('token-1')
+    expect(parseBearerToken('bearer token-1')).toBe('token-1')
     expect(parseBearerToken('Bearer   token-1   ')).toBe('token-1')
   })
 

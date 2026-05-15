@@ -16,18 +16,18 @@ export interface TokenAuthOptions {
   authDisabled?: boolean
 }
 
-const bearerPrefix = 'Bearer '
+const bearerPrefixLength = 'Bearer '.length
 
 export function parseBearerToken(authorization: string | undefined): string | undefined {
   if (authorization === undefined) {
     return undefined
   }
 
-  if (!authorization.startsWith(bearerPrefix)) {
+  if (!authorization.toLowerCase().startsWith('bearer ')) {
     return undefined
   }
 
-  const token = authorization.slice(bearerPrefix.length).trim()
+  const token = authorization.slice(bearerPrefixLength).trim()
   if (token.length === 0) {
     return undefined
   }
