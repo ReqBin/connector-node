@@ -1,6 +1,6 @@
 {
   "name": "@reqbin/connector",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ReqBin Connector (local agent): bridge browser HTTP(S) requests to resources in local network.",
   "type": "module",
   "main": "dist/src/index.js",
