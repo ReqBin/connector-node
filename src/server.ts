@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { createApp, type CreateAppOptions } from './http/app.js'
-import { MemoryPairingStore, type PairingStore } from './security/pairing.js'
+import { MemoryPairingStore, type PairingCodeSnapshot, type PairingStore } from './security/pairing.js'
 
 export interface StartServerOptions extends CreateAppOptions {
   host?: string
@@ -40,6 +40,13 @@ export interface ServerStartupLog {
   versionUrl: string
 }
 
+export interface ServerPairingCodeLog {
+  event: 'reqbin.connector.pairing_code'
+  message: string
+  pairingCode: string
+  pairingExpiresAt: string
+}
+
 function formatUrlHost(host: string): string {
   if (host === '127.0.0.1') {
     return 'localhost'
@@ -48,9 +55,22 @@ function formatUrlHost(host: string): string {
   return host.includes(':') && !host.startsWith('[') ? `[${host}]` : host
 }
 
-function createStartupLog(host: string, port: number, authDisabled: boolean, pairingStore: PairingStore): ServerStartupLog {
+function createPairingCodeLog(pairingCode: PairingCodeSnapshot): ServerPairingCodeLog {
+  return {
+    event: 'reqbin.connector.pairing_code',
+    message: `ReqBin pairing code: ${pairingCode.code}`,
+    pairingCode: pairingCode.code,
+    pairingExpiresAt: new Date(pairingCode.expiresAt).toISOString(),
+  }
+}
+
+function createStartupLog(
+  host: string,
+  port: number,
+  authDisabled: boolean,
+  pairingCode: PairingCodeSnapshot | undefined,
+): ServerStartupLog {
   const baseUrl = `http://${formatUrlHost(host)}:${port}`
-  const pairingCode = authDisabled ? undefined : pairingStore.getPairingCode()
   return {
     authDisabled,
     event: 'reqbin.connector.started',
@@ -69,7 +89,11 @@ function createStartupLog(host: string, port: number, authDisabled: boolean, pai
 }
 
 function logStartup(host: string, port: number, authDisabled: boolean, pairingStore: PairingStore): void {
-  console.log(JSON.stringify(createStartupLog(host, port, authDisabled, pairingStore)))
+  const pairingCode = authDisabled ? undefined : pairingStore.getPairingCode()
+  if (pairingCode !== undefined) {
+    console.log(JSON.stringify(createPairingCodeLog(pairingCode)))
+  }
+  console.log(JSON.stringify(createStartupLog(host, port, authDisabled, pairingCode)))
 }
 
 export async function startServer({
