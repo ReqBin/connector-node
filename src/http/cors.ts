@@ -7,8 +7,10 @@ export type CorsOptions = OriginPolicyOptions
 
 const allowedHeaders = [
   'authorization',
+  'cache-control',
   'content-type',
   CORRELATION_ID_HEADER,
+  'pragma',
 ]
 
 export async function registerCors(app: FastifyInstance, options: CorsOptions = {}): Promise<void> {
