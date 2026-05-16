@@ -10,7 +10,12 @@ const allowedHeaders = [
   'cache-control',
   'content-type',
   CORRELATION_ID_HEADER,
+  'expires',
   'pragma',
+  'x-authorized',
+  'x-devid',
+  'x-sesid',
+  'x-token',
 ]
 
 export async function registerCors(app: FastifyInstance, options: CorsOptions = {}): Promise<void> {

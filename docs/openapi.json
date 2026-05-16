@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "ReqBin Connector API",
-    "version": "0.1.0"
+    "version": "0.1.2"
   },
   "components": {
     "securitySchemes": {

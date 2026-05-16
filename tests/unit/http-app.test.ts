@@ -153,7 +153,7 @@ describe('Fastify app factory', () => {
 
     const response = await testApp.inject({
       headers: {
-        'access-control-request-headers': 'authorization,cache-control,content-type,correlation-id,pragma',
+        'access-control-request-headers': 'authorization,cache-control,content-type,correlation-id,expires,pragma,x-authorized,x-devid,x-sesid,x-token',
         'access-control-request-method': 'POST',
         origin: 'https://example.test',
       },
@@ -187,7 +187,7 @@ describe('Fastify app factory', () => {
 
     const response = await app.inject({
       headers: {
-        'access-control-request-headers': 'authorization,cache-control,content-type,correlation-id,pragma',
+        'access-control-request-headers': 'authorization,cache-control,content-type,correlation-id,expires,pragma,x-authorized,x-devid,x-sesid,x-token',
         'access-control-request-method': 'POST',
         origin: 'http://localhost:5173',
       },
@@ -197,7 +197,7 @@ describe('Fastify app factory', () => {
 
     expect(response.statusCode).toBe(204)
     expect(response.headers['access-control-allow-origin']).toBe('http://localhost:5173')
-    expect(response.headers['access-control-allow-headers']).toBe('authorization, cache-control, content-type, correlation-id, pragma')
+    expect(response.headers['access-control-allow-headers']).toBe('authorization, cache-control, content-type, correlation-id, expires, pragma, x-authorized, x-devid, x-sesid, x-token')
     expect(response.headers['access-control-allow-methods']).toBe('GET, POST, OPTIONS')
   })
 
