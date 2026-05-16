@@ -31,20 +31,11 @@ Safe defaults:
 - blocks metadata and link-local targets such as `169.254.169.254` and IPv6 `fe80::/10`;
 - writes JSON logs to stdout without request bodies, response bodies, tokens, cookies, or auth headers.
 
-Startup output includes endpoint URLs and, when auth is enabled, a short-lived six-digit pairing code:
+Startup output includes endpoint URLs and, when auth is enabled, prints the short-lived six-digit pairing code first:
 
-```json
-{
-  "event": "reqbin.connector.started",
-  "authDisabled": false,
-  "host": "127.0.0.1",
-  "healthUrl": "http://localhost:7070/health",
-  "versionUrl": "http://localhost:7070/version",
-  "fetchUrl": "http://localhost:7070/v1/fetch",
-  "openApiUrl": "http://localhost:7070/openapi.json",
-  "pairingCode": "123456",
-  "pairingExpiresAt": "2026-05-14T22:00:00.000Z"
-}
+```jsonl
+{"event":"reqbin.connector.pairing_code","message":"ReqBin pairing code: 123456","pairingCode":"123456","pairingExpiresAt":"2026-05-14T22:00:00.000Z"}
+{"event":"reqbin.connector.started","authDisabled":false,"host":"127.0.0.1","healthUrl":"http://localhost:7070/health","versionUrl":"http://localhost:7070/version","fetchUrl":"http://localhost:7070/v1/fetch","openApiUrl":"http://localhost:7070/openapi.json","pairingCode":"123456","pairingExpiresAt":"2026-05-14T22:00:00.000Z"}
 ```
 
 ## CLI

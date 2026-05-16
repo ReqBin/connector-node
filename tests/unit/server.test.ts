@@ -14,9 +14,26 @@ async function closeApp(): Promise<void> {
 }
 
 function getLoggedStartupPayload(log: ReturnType<typeof vi.spyOn>): Record<string, unknown> {
-  const message = log.mock.calls[0]?.[0]
+  return getLoggedPayloadByEvent(log, 'reqbin.connector.started')
+}
+
+function getLoggedPayloadByEvent(log: ReturnType<typeof vi.spyOn>, event: string): Record<string, unknown> {
+  const message = log.mock.calls
+    .map((call) => call[0])
+    .find((entry) => {
+      if (typeof entry !== 'string') {
+        return false
+      }
+
+      try {
+        return (JSON.parse(entry) as { event?: unknown }).event === event
+      } catch {
+        return false
+      }
+    })
+
   if (typeof message !== 'string') {
-    throw new Error('Expected startup log message.')
+    throw new Error(`Expected ${event} log message.`)
   }
 
   return JSON.parse(message) as Record<string, unknown>
@@ -66,7 +83,15 @@ describe('server startup', () => {
     })
 
     const payload = getLoggedStartupPayload(log)
+    const pairingPayload = getLoggedPayloadByEvent(log, 'reqbin.connector.pairing_code')
 
+    expect(log.mock.calls[0]?.[0]).toBe(JSON.stringify(pairingPayload))
+    expect(pairingPayload).toMatchObject({
+      event: 'reqbin.connector.pairing_code',
+      message: 'ReqBin pairing code: 123456',
+      pairingCode: '123456',
+      pairingExpiresAt: '1970-01-01T00:05:01.000Z',
+    })
     expect(payload).toMatchObject({
       event: 'reqbin.connector.started',
       fetchUrl: 'http://localhost:9091/v1/fetch',
@@ -98,6 +123,7 @@ describe('server startup', () => {
       authDisabled: true,
       event: 'reqbin.connector.started',
     })
+    expect(log.mock.calls).toHaveLength(1)
     expect(payload.pairingCode).toBeUndefined()
     expect(payload.pairingExpiresAt).toBeUndefined()
   })
